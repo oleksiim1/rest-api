@@ -9,5 +9,8 @@
 /vendor/
 ###< symfony/framework-bundle ###
 
+# Flex regenerates this for PHP-config IDE hints; this app uses YAML only
+/config/reference.php
+
 /.env
 /.env.dev

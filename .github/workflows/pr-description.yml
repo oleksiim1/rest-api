@@ -1,0 +1,51 @@
+name: PR description
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  describe:
+    # Only describe PRs opened by the repository owner; everyone else is
+    # skipped before any step runs, so the API is never called.
+    if: github.event.pull_request.user.login == 'oleksiim1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Check out the PR head itself (not the synthetic merge commit) with full
+      # history, so `origin/<base>...HEAD` contains only this branch's commits.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            BRANCH: ${{ github.head_ref }}
+            BASE: origin/${{ github.base_ref }}
+
+            Use the pr-description skill to write the description for this pull request.
+            The checkout is a detached HEAD at the PR's head commit, so use BASE above as the
+            base branch and BRANCH above as the branch name (for the ticket id).
+
+            Write only the description markdown (the What / Why / Changes sections, without
+            the surrounding code fence) to a file, then replace the pull request body with
+            `gh pr edit ${{ github.event.pull_request.number }} --body-file <file>`.
+            Do not create, push or comment on anything else.
+          claude_args: |
+            --max-turns 15
+            --model claude-sonnet-5-5
+            --allowedTools "Skill,Read,Write,Grep,Glob,Bash(git log:*),Bash(git diff:*),Bash(git status:*),Bash(git merge-base:*),Bash(git rev-parse:*),Bash(git branch:*),Bash(git symbolic-ref:*),Bash(gh pr edit:*)"

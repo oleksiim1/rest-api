@@ -10,7 +10,8 @@ A Symfony 7.4 REST API (PHP >= 8.2) built with Domain-Driven Design and Test-Dri
 
 ```bash
 composer install                      # install dependencies
-symfony server:start                  # run the API locally
+docker compose up -d --build          # run the API (http://localhost:8080) with nginx and Postgres
+docker compose exec php php bin/console <command>  # run a console command in the container
 php bin/console debug:router          # list routes
 php bin/console lint:container        # validate service wiring
 php bin/console lint:yaml config      # validate YAML config
@@ -52,3 +53,7 @@ Tests go under `tests/` (`App\Tests\`), mirroring the `src/` structure:
 - `Domain` tests are pure unit tests with no kernel or database.
 - `Application` tests use in-memory fakes for repository interfaces.
 - `Infrastructure` and `Presentation` tests use `KernelTestCase` and `WebTestCase`, the latter covering HTTP status codes and response bodies.
+
+## Git
+- Branch names: `<type>/<ticket-id>-<kebab-description>` (types: feat, fix, chore, docs, refactor)
+- Branch from `master`, never commit directly to it
