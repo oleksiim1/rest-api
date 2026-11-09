@@ -3,6 +3,8 @@ doctrine:
         url: '%env(resolve:DATABASE_URL)%'
         profiling_collect_backtrace: '%kernel.debug%'
         use_savepoints: true
+        types:
+            product_id: App\Catalog\Infrastructure\Persistence\Doctrine\Type\ProductIdType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
@@ -19,6 +21,13 @@ doctrine:
         #         dir: '%kernel.project_dir%/src/Billing/Infrastructure/Persistence/Doctrine/Mapping'
         #         prefix: 'App\Billing\Domain'
         #         alias: Billing
+        mappings:
+            Catalog:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Catalog/Infrastructure/Persistence/Doctrine/Mapping'
+                prefix: 'App\Catalog\Domain'
+                alias: Catalog
         controller_resolver:
             auto_mapping: false
 

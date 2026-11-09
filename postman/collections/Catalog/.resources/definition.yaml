@@ -1,0 +1,7 @@
+$kind: collection
+description: |-
+  HTTP API for the Catalog bounded context.
+  Select the Local environment so {{baseUrl}} resolves to http://localhost:8080.
+  Run Create product before Show, Update, or Delete. It stores the new id in {{productId}}.
+variables:
+  productId: ""
