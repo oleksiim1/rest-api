@@ -1,7 +1,7 @@
 ---
 name: pr-reviewer
 description: Reviews a pull request diff for bugs, security issues, readability, and missing tests, and returns concise, actionable feedback.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash(gh pr diff:*), Bash(gh pr view:*)
 model: claude-sonnet-5-5
 ---
 
