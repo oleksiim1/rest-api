@@ -1,0 +1,36 @@
+$kind: http-example
+name: 201 Created
+request:
+  method: POST
+  url: '{{baseUrl}}/products'
+  headers:
+    - key: Accept
+      value: application/json
+    - key: Content-Type
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "name": "Honey",
+        "price": { "amount": 2500, "currency": "UAH" },
+        "unit": "kg"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    - key: Content-Type
+      value: application/json
+    - key: Location
+      value: /products/11111111-1111-4111-8111-111111111111
+  body:
+    type: json
+    content: |-
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Honey",
+        "price": { "amount": 2500, "currency": "UAH" },
+        "unit": "kg"
+      }
+order: 1000

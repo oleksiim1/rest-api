@@ -1,0 +1,22 @@
+$kind: http-request
+id: 59a8e9c5d6d133a9e383c442
+name: List products
+method: GET
+url: '{{baseUrl}}/products'
+headers:
+  - key: Accept
+    value: application/json
+description: Returns every product as a JSON array.
+order: 1000
+examples: './.resources/List products.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("body is an array", function () {
+          pm.expect(pm.response.json()).to.be.an("array");
+      });

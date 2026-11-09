@@ -1,0 +1,42 @@
+$kind: http-request
+id: 5f91a71a32cdc4b1a8ab155f
+name: Create product
+method: POST
+url: '{{baseUrl}}/products'
+headers:
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Honey",
+      "price": { "amount": 2500, "currency": "UAH" },
+      "unit": "kg"
+    }
+description: |-
+  Creates a product. price.amount is minor units (2500 = 25.00). currency is a
+  3-letter uppercase ISO 4217 code. unit is one of kg, g, l, ml, piece, dozen, pack.
+  Stores the new id in the collection variable productId.
+  The sample name is Honey so a full run does not collide with the seeded Potato.
+order: 2000
+examples: './.resources/Create product.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      const body = pm.response.json();
+
+      pm.test("body has an id", function () {
+          pm.expect(body.id).to.be.a("string").and.not.empty;
+      });
+
+      if (body && body.id) {
+          pm.collectionVariables.set("productId", body.id);
+      }

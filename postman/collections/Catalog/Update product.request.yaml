@@ -1,0 +1,36 @@
+$kind: http-request
+id: 8416bfb46454da692d26f6d4
+name: Update product
+method: PUT
+url: '{{baseUrl}}/products/{{productId}}'
+headers:
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Honey",
+      "price": { "amount": 2500, "currency": "UAH" },
+      "unit": "kg"
+    }
+description: Replaces the product name, price, and unit. Run Create product first, or set the productId collection variable.
+order: 4000
+examples: './.resources/Update product.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("body is the updated product", function () {
+          const body = pm.response.json();
+          pm.expect(body.id).to.eql(pm.collectionVariables.get("productId"));
+          pm.expect(body.name).to.eql("Honey");
+          pm.expect(body.price).to.eql({ amount: 2500, currency: "UAH" });
+          pm.expect(body.unit).to.eql("kg");
+      });

@@ -1,0 +1,30 @@
+$kind: http-example
+name: 422 Unprocessable Content
+request:
+  method: POST
+  url: '{{baseUrl}}/products'
+  headers:
+    - key: Accept
+      value: application/json
+    - key: Content-Type
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "name": "Potato",
+        "unit": "kg"
+      }
+response:
+  statusCode: 422
+  statusText: Unprocessable Content
+  headers:
+    - key: Content-Type
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": "\"price\" must be an object with \"amount\" and \"currency\"."
+      }
+order: 3000

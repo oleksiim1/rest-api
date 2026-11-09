@@ -1,0 +1,22 @@
+$kind: http-request
+id: 4be289b431ead18bdcfcd07c
+name: Delete product
+method: DELETE
+url: '{{baseUrl}}/products/{{productId}}'
+headers:
+  - key: Accept
+    value: application/json
+description: Deletes the product and returns 204 with an empty body. Run Create product first, or set the productId collection variable.
+order: 5000
+examples: './.resources/Delete product.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 204", function () {
+          pm.response.to.have.status(204);
+      });
+
+      pm.test("body is empty", function () {
+          pm.expect(pm.response.text()).to.eql("");
+      });
