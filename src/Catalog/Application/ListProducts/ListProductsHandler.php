@@ -16,8 +16,8 @@ final class ListProductsHandler
     /**
      * @return list<ProductView>
      */
-    public function __invoke(): array
+    public function __invoke(ListProducts $query): array
     {
-        return array_map(ProductView::fromProduct(...), $this->products->all());
+        return array_map(ProductView::fromProduct(...), $this->products->page($query->offset, $query->limit));
     }
 }

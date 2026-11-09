@@ -31,6 +31,18 @@ final class MoneyTest extends TestCase
         new Money(-1, 'UAH');
     }
 
+    public function testTheLargestStorableAmountIsAllowed(): void
+    {
+        self::assertSame(2147483647, (new Money(Money::MAX_AMOUNT, 'UAH'))->amount());
+    }
+
+    public function testItRejectsAnAmountTheDatabaseCannotStore(): void
+    {
+        $this->expectException(InvalidProductData::class);
+
+        new Money(Money::MAX_AMOUNT + 1, 'UAH');
+    }
+
     #[DataProvider('invalidCurrencies')]
     public function testItRejectsInvalidCurrencies(string $currency): void
     {

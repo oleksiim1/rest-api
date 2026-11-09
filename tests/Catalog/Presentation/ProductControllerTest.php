@@ -43,7 +43,7 @@ final class ProductControllerTest extends WebTestCase
         $this->client->request('POST', '/products', server: ['CONTENT_TYPE' => 'application/json'], content: '{"name":');
 
         self::assertResponseStatusCodeSame(400);
-        self::assertArrayHasKey('error', $this->json());
+        self::assertSame(['error' => 'Request body is not valid JSON.'], $this->json());
     }
 
     /**
@@ -65,13 +65,44 @@ final class ProductControllerTest extends WebTestCase
 
         yield 'missing name' => [array_diff_key($potato, ['name' => true])];
         yield 'missing price' => [array_diff_key($potato, ['price' => true])];
+        yield 'missing unit' => [array_diff_key($potato, ['unit' => true])];
         yield 'name not a string' => [['name' => 42] + $potato];
         yield 'empty name' => [['name' => ' '] + $potato];
+        yield 'price not an object' => [['price' => 2500] + $potato];
+        yield 'price without amount' => [['price' => ['currency' => 'UAH']] + $potato];
+        yield 'price without currency' => [['price' => ['amount' => 2500]] + $potato];
         yield 'amount as float' => [['price' => ['amount' => 25.5, 'currency' => 'UAH']] + $potato];
+        yield 'amount as string' => [['price' => ['amount' => '2500', 'currency' => 'UAH']] + $potato];
         yield 'negative amount' => [['price' => ['amount' => -1, 'currency' => 'UAH']] + $potato];
+        yield 'amount too large to store' => [['price' => ['amount' => 2147483648, 'currency' => 'UAH']] + $potato];
+        yield 'amount beyond 64 bits' => [['price' => ['amount' => 3e20, 'currency' => 'UAH']] + $potato];
+        yield 'currency not a string' => [['price' => ['amount' => 2500, 'currency' => 980]] + $potato];
         yield 'bad currency' => [['price' => ['amount' => 2500, 'currency' => 'uah']] + $potato];
+        yield 'unit not a string' => [['unit' => 1] + $potato];
         yield 'unknown unit' => [['unit' => 'bucket'] + $potato];
         yield 'body is a list' => [['Potato', 2500]];
+    }
+
+    public function testCreateAcceptsTheLargestStorableAmount(): void
+    {
+        $body = $this->request('POST', '/products', ['price' => ['amount' => 2147483647, 'currency' => 'UAH']] + self::potato());
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(2147483647, $body['price']['amount']);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('invalidPayloads')]
+    public function testUpdateRejectsInvalidDataWith422(array $payload): void
+    {
+        $created = $this->request('POST', '/products', ['name' => 'Rice'] + self::potato());
+
+        $body = $this->request('PUT', '/products/'.$created['id'], $payload);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertIsString($body['error']);
     }
 
     public function testCreateRejectsDuplicateNameWith409(): void
@@ -92,6 +123,36 @@ final class ProductControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
         self::assertSame(['Eggs', 'Potato'], array_column($body, 'name'));
+    }
+
+    public function testListReturnsTheRequestedPage(): void
+    {
+        foreach (['Rice', 'Eggs', 'Garlic', 'Potato'] as $name) {
+            $this->request('POST', '/products', ['name' => $name] + self::potato());
+        }
+
+        $body = $this->request('GET', '/products?limit=2&offset=1');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['Garlic', 'Potato'], array_column($body, 'name'));
+    }
+
+    #[DataProvider('invalidPages')]
+    public function testListRejectsAnInvalidPageWith400(string $query): void
+    {
+        $body = $this->request('GET', '/products?'.$query);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertIsString($body['error']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function invalidPages(): iterable
+    {
+        yield 'limit zero' => ['limit=0'];
+        yield 'limit above max' => ['limit=101'];
+        yield 'limit not a number' => ['limit=all'];
+        yield 'negative offset' => ['offset=-5'];
     }
 
     public function testListIsAnEmptyArrayWithoutProducts(): void

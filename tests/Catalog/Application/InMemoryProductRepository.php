@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Catalog\Application;
 
+use App\Catalog\Domain\Exception\ProductAlreadyExists;
 use App\Catalog\Domain\Product;
 use App\Catalog\Domain\ProductId;
 use App\Catalog\Domain\ProductName;
@@ -23,6 +24,11 @@ final class InMemoryProductRepository implements ProductRepository
 
     public function save(Product $product): void
     {
+        $sameName = $this->ofName($product->name());
+        if (null !== $sameName && !$sameName->id()->equals($product->id())) {
+            throw ProductAlreadyExists::withName($product->name());
+        }
+
         $this->products[$product->id()->toString()] = $product;
     }
 
@@ -47,11 +53,11 @@ final class InMemoryProductRepository implements ProductRepository
         return null;
     }
 
-    public function all(): array
+    public function page(int $offset, int $limit): array
     {
         $products = array_values($this->products);
         usort($products, static fn (Product $a, Product $b): int => strcmp($a->name()->value(), $b->name()->value()));
 
-        return $products;
+        return \array_slice($products, $offset, $limit);
     }
 }

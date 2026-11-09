@@ -32,7 +32,7 @@ final class SeedProductsCommandTest extends KernelTestCase
 
         $this->tester->assertCommandIsSuccessful();
         $count = \count(ProductSeedData::PRODUCTS);
-        self::assertCount($count, self::getContainer()->get(ProductRepository::class)->all());
+        self::assertCount($count, self::getContainer()->get(ProductRepository::class)->page(0, 1000));
         self::assertStringContainsString(\sprintf('Created %d, skipped 0', $count), $this->tester->getDisplay());
     }
 
@@ -42,7 +42,7 @@ final class SeedProductsCommandTest extends KernelTestCase
         $this->tester->execute([]);
 
         self::assertSame(Command::SUCCESS, $this->tester->getStatusCode());
-        self::assertCount(\count(ProductSeedData::PRODUCTS), self::getContainer()->get(ProductRepository::class)->all());
+        self::assertCount(\count(ProductSeedData::PRODUCTS), self::getContainer()->get(ProductRepository::class)->page(0, 1000));
         self::assertStringContainsString(
             \sprintf('Created 0, skipped %d', \count(ProductSeedData::PRODUCTS)),
             $this->tester->getDisplay(),

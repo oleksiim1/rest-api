@@ -10,10 +10,12 @@ use App\Catalog\Application\DeleteProduct\DeleteProduct;
 use App\Catalog\Application\DeleteProduct\DeleteProductHandler;
 use App\Catalog\Application\GetProduct\GetProduct;
 use App\Catalog\Application\GetProduct\GetProductHandler;
+use App\Catalog\Application\ListProducts\ListProducts;
 use App\Catalog\Application\ListProducts\ListProductsHandler;
 use App\Catalog\Application\ProductView;
 use App\Catalog\Application\UpdateProduct\UpdateProduct;
 use App\Catalog\Application\UpdateProduct\UpdateProductHandler;
+use App\Shared\Presentation\Pagination;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,9 +26,14 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ProductController extends AbstractController
 {
     #[Route('', name: 'list', methods: ['GET'])]
-    public function list(ListProductsHandler $handler): JsonResponse
+    public function list(Request $request, ListProductsHandler $handler): JsonResponse
     {
-        return $this->json(array_map(static fn (ProductView $view): array => $view->toArray(), $handler()));
+        $page = Pagination::fromRequest($request, ListProducts::DEFAULT_LIMIT, ListProducts::MAX_LIMIT);
+
+        return $this->json(array_map(
+            static fn (ProductView $view): array => $view->toArray(),
+            $handler(new ListProducts($page->limit, $page->offset)),
+        ));
     }
 
     #[Route('', name: 'create', methods: ['POST'])]

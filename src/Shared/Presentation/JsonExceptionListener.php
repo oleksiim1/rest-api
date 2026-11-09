@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Shared\Presentation;
 
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
@@ -18,14 +17,17 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Expected client errors from ExceptionStatusMap are answered before the logger (priority 8), so
  * a 404 for an unknown product is not logged as "critical". Everything else is answered after it
  * (priority -64), so real failures are still logged.
+ *
+ * Unexpected errors never expose their message, whatever the environment: it can contain SQL or
+ * other internals. Read the logs instead.
  */
 final class JsonExceptionListener
 {
-    public function __construct(
-        private readonly ExceptionStatusMap $statusMap,
-        #[Autowire('%kernel.debug%')]
-        private readonly bool $debug,
-    ) {
+    public const MALFORMED_JSON = 'Request body is not valid JSON.';
+    public const INTERNAL_ERROR = 'Internal server error.';
+
+    public function __construct(private readonly ExceptionStatusMap $statusMap)
+    {
     }
 
     #[AsEventListener(event: KernelEvents::EXCEPTION, priority: 8)]
@@ -37,9 +39,8 @@ final class JsonExceptionListener
             return;
         }
 
-        $message = $exception instanceof \JsonException
-            ? 'Malformed JSON: '.$exception->getMessage().'.'
-            : $exception->getMessage();
+        // The parser's own wording is an implementation detail, so clients get a fixed message.
+        $message = $exception instanceof \JsonException ? self::MALFORMED_JSON : $exception->getMessage();
 
         $event->setResponse(new JsonResponse(['error' => $message], $status));
     }
@@ -59,9 +60,6 @@ final class JsonExceptionListener
             return;
         }
 
-        $event->setResponse(new JsonResponse(
-            ['error' => $this->debug ? $exception->getMessage() : 'Internal server error.'],
-            500,
-        ));
+        $event->setResponse(new JsonResponse(['error' => self::INTERNAL_ERROR], 500));
     }
 }

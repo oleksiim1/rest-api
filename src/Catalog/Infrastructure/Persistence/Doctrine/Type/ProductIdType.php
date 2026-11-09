@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Catalog\Infrastructure\Persistence\Doctrine\Type;
 
+use App\Catalog\Domain\Exception\InvalidProductId;
 use App\Catalog\Domain\ProductId;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\ConversionException;
@@ -42,7 +43,7 @@ final class ProductIdType extends GuidType
 
         try {
             return ProductId::fromString($value);
-        } catch (\DomainException $e) {
+        } catch (InvalidProductId $e) {
             throw new ConversionException($e->getMessage(), 0, $e);
         }
     }

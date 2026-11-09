@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Catalog\Infrastructure\Persistence\Doctrine;
 
+use App\Catalog\Domain\Exception\ProductAlreadyExists;
 use App\Catalog\Domain\Money;
 use App\Catalog\Domain\Product;
 use App\Catalog\Domain\ProductName;
@@ -11,6 +12,7 @@ use App\Catalog\Domain\ProductRepository;
 use App\Catalog\Domain\Unit;
 use App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository;
 use App\Tests\Catalog\TruncatesProducts;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -87,15 +89,73 @@ final class DoctrineProductRepositoryTest extends KernelTestCase
         self::assertNull($this->products->ofName(new ProductName('Onion')));
     }
 
-    public function testAllIsOrderedByName(): void
+    public function testPageIsOrderedByName(): void
     {
         $this->newProduct('Rice');
         $this->newProduct('Eggs', Unit::Dozen);
         $this->newProduct('Garlic');
 
-        $names = array_map(static fn (Product $p): string => $p->name()->value(), $this->products->all());
+        self::assertSame(['Eggs', 'Garlic', 'Rice'], $this->names($this->products->page(0, 10)));
+    }
 
-        self::assertSame(['Eggs', 'Garlic', 'Rice'], $names);
+    public function testPageAppliesOffsetAndLimit(): void
+    {
+        foreach (['Rice', 'Eggs', 'Garlic', 'Potato'] as $name) {
+            $this->newProduct($name);
+        }
+
+        self::assertSame(['Garlic', 'Potato'], $this->names($this->products->page(1, 2)));
+        self::assertSame([], $this->names($this->products->page(4, 2)));
+    }
+
+    public function testSavingACaseVariantDuplicateThrowsProductAlreadyExists(): void
+    {
+        $this->newProduct('Potato');
+
+        // Bypasses the handler's ofName() check, as a concurrent request would.
+        try {
+            $this->newProduct('POTATO');
+            self::fail('Expected ProductAlreadyExists.');
+        } catch (ProductAlreadyExists $e) {
+            self::assertSame('A product named "POTATO" already exists.', $e->getMessage());
+            self::assertInstanceOf(UniqueConstraintViolationException::class, $e->getPrevious());
+        }
+    }
+
+    public function testRenamingOntoAnExistingNameThrowsProductAlreadyExists(): void
+    {
+        $this->newProduct('Rice');
+        $potato = $this->newProduct('Potato');
+
+        $this->expectException(ProductAlreadyExists::class);
+
+        $potato->update(new ProductName('rice'), new Money(1000, 'UAH'), Unit::Kilogram);
+        $this->products->save($potato);
+    }
+
+    public function testTheRepositoryKeepsWorkingAfterAConflict(): void
+    {
+        $this->newProduct('Potato');
+
+        try {
+            $this->newProduct('potato');
+        } catch (ProductAlreadyExists) {
+        }
+
+        // A failed flush closes the EntityManager; without a reset this save would throw.
+        $this->newProduct('Rice');
+
+        self::assertSame(['Potato', 'Rice'], $this->names($this->products->page(0, 10)));
+    }
+
+    /**
+     * @param list<Product> $products
+     *
+     * @return list<string>
+     */
+    private function names(array $products): array
+    {
+        return array_map(static fn (Product $p): string => $p->name()->value(), $products);
     }
 
     public function testRemoveDeletesTheProduct(): void
