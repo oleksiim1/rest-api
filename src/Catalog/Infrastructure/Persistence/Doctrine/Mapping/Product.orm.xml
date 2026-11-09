@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\Catalog\Domain\Product" table="products">
+        <unique-constraints>
+            <unique-constraint name="uniq_products_name" columns="name"/>
+        </unique-constraints>
+
+        <id name="id" type="product_id" column="id">
+            <generator strategy="NONE"/>
+        </id>
+
+        <embedded name="name" class="App\Catalog\Domain\ProductName" use-column-prefix="false"/>
+        <embedded name="price" class="App\Catalog\Domain\Money" column-prefix="price_"/>
+
+        <field name="unit" column="unit" type="string" length="16" enum-type="App\Catalog\Domain\Unit"/>
+    </entity>
+</doctrine-mapping>
