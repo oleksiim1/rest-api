@@ -1,0 +1,43 @@
+name: Issue plan
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    # Only plan issues opened by the repo owner
+    if: github.event.issue.user.login == github.repository_owner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Claude plan
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are planning work for a Symfony REST API project.
+            Read issue #${{ github.event.issue.number }} in ${{ github.repository }}:
+            Title: ${{ github.event.issue.title }}
+            Body: ${{ github.event.issue.body }}
+
+            Explore the codebase, then post ONE comment on the issue with an implementation plan containing:
+            1. A short summary of what will be built.
+            2. The files to create or change, with a one-line reason each.
+            3. Steps in the order they should be done.
+            4. Tests to add.
+            5. Open questions for the author, if anything is unclear.
+
+            Do NOT write or change any code. Do NOT open a pull request.
+            End the comment with: Reply with corrections, or comment "@claude implement" to approve this plan.
+          claude_args: |
+            --max-turns 15
+            --model claude-sonnet-5-5
+            --allowedTools "Read,Glob,Grep,Bash(gh issue comment:*)"
