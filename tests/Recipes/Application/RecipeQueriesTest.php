@@ -10,9 +10,12 @@ use App\Recipes\Application\GetRecipe\GetRecipe;
 use App\Recipes\Application\GetRecipe\GetRecipeHandler;
 use App\Recipes\Application\IngredientInput;
 use App\Recipes\Application\IngredientResolver;
+use App\Recipes\Application\ListRecipes\ListRecipes;
+use App\Recipes\Application\ListRecipes\ListRecipesHandler;
 use App\Recipes\Application\RecipeView;
 use App\Recipes\Domain\Exception\InvalidRecipeId;
 use App\Recipes\Domain\Exception\RecipeNotFound;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class RecipeQueriesTest extends TestCase
@@ -54,6 +57,58 @@ final class RecipeQueriesTest extends TestCase
         $this->expectException(InvalidRecipeId::class);
 
         (new GetRecipeHandler($this->recipes))(new GetRecipe('pancakes'));
+    }
+
+    public function testListReturnsRecipesOrderedByTitle(): void
+    {
+        $this->createRecipe('Varenyky');
+        $this->createRecipe('Borscht');
+        $this->createRecipe('Holubtsi');
+
+        self::assertSame(['Borscht', 'Holubtsi', 'Varenyky'], $this->titles((new ListRecipesHandler($this->recipes))(new ListRecipes())));
+    }
+
+    public function testListIsEmptyWithoutRecipes(): void
+    {
+        self::assertSame([], (new ListRecipesHandler($this->recipes))(new ListRecipes()));
+    }
+
+    public function testListAppliesLimitAndOffset(): void
+    {
+        foreach (['Varenyky', 'Borscht', 'Holubtsi', 'Deruny'] as $title) {
+            $this->createRecipe($title);
+        }
+
+        $handler = new ListRecipesHandler($this->recipes);
+
+        self::assertSame(['Deruny', 'Holubtsi'], $this->titles($handler(new ListRecipes(limit: 2, offset: 1))));
+        self::assertSame([], $handler(new ListRecipes(limit: 2, offset: 4)));
+    }
+
+    #[DataProvider('invalidPages')]
+    public function testListRejectsAnOutOfRangePage(int $limit, int $offset): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new ListRecipes($limit, $offset);
+    }
+
+    /** @return iterable<string, array{int, int}> */
+    public static function invalidPages(): iterable
+    {
+        yield 'zero limit' => [0, 0];
+        yield 'limit above the maximum' => [ListRecipes::MAX_LIMIT + 1, 0];
+        yield 'negative offset' => [10, -1];
+    }
+
+    /**
+     * @param list<RecipeView> $views
+     *
+     * @return list<string>
+     */
+    private function titles(array $views): array
+    {
+        return array_map(static fn (RecipeView $view): string => $view->title, $views);
     }
 
     private function createRecipe(string $title): RecipeView
