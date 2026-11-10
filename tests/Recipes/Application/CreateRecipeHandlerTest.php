@@ -8,6 +8,7 @@ use App\Recipes\Application\CreateRecipe\CreateRecipe;
 use App\Recipes\Application\CreateRecipe\CreateRecipeHandler;
 use App\Recipes\Application\IngredientInput;
 use App\Recipes\Application\IngredientResolver;
+use App\Recipes\Domain\Exception\UnknownProduct;
 use App\Recipes\Domain\RecipeId;
 use PHPUnit\Framework\TestCase;
 
@@ -45,5 +46,22 @@ final class CreateRecipeHandlerTest extends TestCase
             ],
         ], $view->toArray());
         self::assertNotNull($this->recipes->ofId(RecipeId::fromString($view->id)));
+    }
+
+    public function testItRejectsAnIngredientWhoseProductDoesNotExist(): void
+    {
+        $missing = '00000000-0000-7000-8000-000000000099';
+
+        try {
+            ($this->handler)(new CreateRecipe('Mashed potatoes', 'Boil and mash.', [
+                new IngredientInput(self::POTATO, 1),
+                new IngredientInput($missing, 1),
+            ]));
+            self::fail('Expected UnknownProduct.');
+        } catch (UnknownProduct $e) {
+            self::assertSame(\sprintf('Product "%s" does not exist.', $missing), $e->getMessage());
+        }
+
+        self::assertSame([], $this->recipes->page(0, 10));
     }
 }
