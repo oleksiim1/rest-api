@@ -24,6 +24,7 @@ final class RecipeControllerTest extends WebTestCase
     private const POTATO = '00000000-0000-7000-8000-000000000001';
     private const ONION = '00000000-0000-7000-8000-000000000002';
     private const MISSING_PRODUCT = '00000000-0000-7000-8000-000000000099';
+    private const UNKNOWN_ID = '0193a2b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b';
 
     private KernelBrowser $client;
 
@@ -109,6 +110,32 @@ final class RecipeControllerTest extends WebTestCase
         yield 'four decimals' => [['ingredients' => [['productId' => self::POTATO, 'quantity' => 0.1234]]] + $recipe, 'Ingredient quantity must have at most 3 decimal places.'];
         yield 'malformed product id' => [['ingredients' => [['productId' => 'potato', 'quantity' => 1]]] + $recipe, '"potato" is not a valid product id.'];
         yield 'unknown product' => [['ingredients' => [['productId' => self::MISSING_PRODUCT, 'quantity' => 1]]] + $recipe, \sprintf('Product "%s" does not exist.', self::MISSING_PRODUCT)];
+    }
+
+    public function testShowReturnsTheRecipe(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $body = $this->request('GET', '/recipes/'.$created['id']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame($created, $body);
+    }
+
+    #[DataProvider('missingIds')]
+    public function testShowReturns404ForAnUnknownOrMalformedId(string $id, string $error): void
+    {
+        $body = $this->request('GET', '/recipes/'.$id);
+
+        self::assertResponseStatusCodeSame(404);
+        self::assertSame(['error' => $error], $body);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function missingIds(): iterable
+    {
+        yield 'unknown uuid' => [self::UNKNOWN_ID, \sprintf('Recipe "%s" was not found.', self::UNKNOWN_ID)];
+        yield 'not a uuid' => ['42', '"42" is not a valid recipe id.'];
     }
 
     /**
