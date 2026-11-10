@@ -62,12 +62,13 @@ jobs:
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      # tests/bootstrap.php calls Dotenv::bootEnv('.env'), which fails when the file is missing.
+      # The kernel boots .env through Dotenv::bootEnv(), which fails when the file is missing.
+      # Composer's post-install cache:clear boots it too, so this runs before the install.
       - name: Create an empty .env
         run: touch .env
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare the test database
         run: |
