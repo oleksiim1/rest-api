@@ -1,0 +1,22 @@
+$kind: http-request
+id: c605033e73796785dd5d7f22
+name: Delete recipe
+method: DELETE
+url: '{{baseUrl}}/recipes/{{recipeId}}'
+headers:
+  - key: Accept
+    value: application/json
+description: Deletes the recipe and returns 204 with an empty body. Run Create recipe first, or set the recipeId collection variable.
+order: 5000
+examples: './.resources/Delete recipe.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 204", function () {
+          pm.response.to.have.status(204);
+      });
+
+      pm.test("body is empty", function () {
+          pm.expect(pm.response.text()).to.eql("");
+      });

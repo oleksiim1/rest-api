@@ -1,0 +1,10 @@
+$kind: collection
+description: |-
+  HTTP API for the Recipes bounded context.
+  Select the Local environment so {{baseUrl}} resolves to http://localhost:8080.
+  Ingredients refer to Catalog products, so at least one product must exist
+  (run app:catalog:seed-products or the Catalog collection's Create product first).
+  Run Create recipe before Show, Update, or Delete. It stores the new id in {{recipeId}}.
+variables:
+  recipeId: ""
+  ingredientProductId: ""

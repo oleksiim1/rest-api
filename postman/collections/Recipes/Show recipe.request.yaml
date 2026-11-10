@@ -1,0 +1,22 @@
+$kind: http-request
+id: 5461e861325ed1c42e238fd5
+name: Show recipe
+method: GET
+url: '{{baseUrl}}/recipes/{{recipeId}}'
+headers:
+  - key: Accept
+    value: application/json
+description: Returns one recipe. Run Create recipe first, or set the recipeId collection variable.
+order: 3000
+examples: './.resources/Show recipe.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("body is the recipe", function () {
+          pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get("recipeId"));
+      });
