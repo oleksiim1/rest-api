@@ -69,7 +69,14 @@ class Recipe
         }
 
         $rows = [];
+        $seen = [];
         foreach (array_values($ingredients) as $position => $ingredient) {
+            $productId = $ingredient->productId()->toString();
+            if (isset($seen[$productId])) {
+                throw new InvalidRecipeData(\sprintf('Product "%s" appears more than once in the recipe.', $productId));
+            }
+            $seen[$productId] = true;
+
             $rows[] = new RecipeIngredient($this, $ingredient->productId(), $ingredient->quantity(), $position);
         }
 

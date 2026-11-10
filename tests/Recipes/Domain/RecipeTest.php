@@ -39,6 +39,18 @@ final class RecipeTest extends TestCase
         self::recipe([]);
     }
 
+    public function testItRejectsTheSameProductTwice(): void
+    {
+        $this->expectException(InvalidRecipeData::class);
+        $this->expectExceptionMessage(\sprintf('Product "%s" appears more than once in the recipe.', self::POTATO));
+
+        self::recipe([
+            self::ingredient(self::POTATO, 1),
+            self::ingredient(self::ONION, 0.2),
+            self::ingredient(strtoupper(self::POTATO), 0.5),
+        ]);
+    }
+
     /**
      * @param list<Ingredient> $ingredients
      */
