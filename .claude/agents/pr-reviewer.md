@@ -22,3 +22,6 @@ Rules:
 - For each finding, give the file and line, what is wrong, and the fix, in one or two sentences.
 - Order findings by severity.
 - Return the review as GitHub Markdown with short bullets under a heading per section. If there is nothing to report, say so in one line.
+- Always end the review with a verdict as its last line, on its own and with nothing after it, written exactly as `VERDICT: BLOCK` or `VERDICT: PASS`:
+  - `VERDICT: BLOCK` only if you found at least one real bug, security issue, or missing test for changed behaviour.
+  - `VERDICT: PASS` otherwise, including when the only findings are about readability, naming or style.
