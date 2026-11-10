@@ -38,7 +38,7 @@ For each unchecked test-plan item, in order:
 1. **Red.** Write the test in the matching place under `tests/` (mirroring `src/`). Run it with `vendor/bin/phpunit <test file>` (or `--filter`) and confirm it fails for the expected reason, not because of a typo or missing import.
 2. **Green.** Write the minimum code to make it pass, in the right layer. Follow `CLAUDE.md`: Domain has no Symfony or Doctrine imports, controllers stay thin and delegate to Application, repository interfaces live in Domain and are bound in `config/services.yaml`, Doctrine mappings are XML.
 3. **Refactor** while the tests stay green.
-4. **Commit** the item: imperative subject under 72 characters, matching recent `git log` style, with a short body when useful.
+4. **Commit** the item. Stage only this item's changes, write the message following the format in `.claude/skills/commit-message/SKILL.md` (applied to the staged changes), then run `git commit`. As that skill says, add no attribution or `Co-Authored-By` lines.
 5. **Tick it off in the issue.** Fetch the current body, change that item's `- [ ]` to `- [x]`, write it to a temporary file in the scratchpad directory and run `gh issue edit <N> --body-file <file>`. To limit noise, it is fine to tick several items at once after a layer is finished, but always before stopping.
 
 For non-code items (CI, Docker, docs), make the change and run the check the item describes instead of a PHPUnit test.
