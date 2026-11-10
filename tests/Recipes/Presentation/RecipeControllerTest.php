@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Recipes\Presentation;
+
+use App\Catalog\Domain\Money;
+use App\Catalog\Domain\Product;
+use App\Catalog\Domain\ProductId;
+use App\Catalog\Domain\ProductName;
+use App\Catalog\Domain\ProductRepository;
+use App\Catalog\Domain\Unit;
+use App\Tests\Catalog\TruncatesProducts;
+use App\Tests\Recipes\TruncatesRecipes;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+
+final class RecipeControllerTest extends WebTestCase
+{
+    use TruncatesProducts;
+    use TruncatesRecipes;
+
+    private const POTATO = '00000000-0000-7000-8000-000000000001';
+    private const ONION = '00000000-0000-7000-8000-000000000002';
+    private const MISSING_PRODUCT = '00000000-0000-7000-8000-000000000099';
+
+    private KernelBrowser $client;
+
+    protected function setUp(): void
+    {
+        $this->client = self::createClient();
+        $container = self::getContainer();
+        self::truncateRecipes($container);
+        self::truncateProducts($container);
+
+        $products = $container->get(ProductRepository::class);
+        \assert($products instanceof ProductRepository);
+        $products->save(new Product(ProductId::fromString(self::POTATO), new ProductName('Potato'), new Money(2500, 'UAH'), Unit::Kilogram));
+        $products->save(new Product(ProductId::fromString(self::ONION), new ProductName('Onion'), new Money(2200, 'UAH'), Unit::Kilogram));
+    }
+
+    public function testCreateReturns201WithLocationAndBody(): void
+    {
+        $body = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $body['id']);
+        self::assertResponseHeaderSame('Location', '/recipes/'.$body['id']);
+        self::assertSame([
+            'id' => $body['id'],
+            'title' => 'Mashed potatoes',
+            'description' => 'Boil and mash.',
+            'ingredients' => [
+                ['productId' => self::POTATO, 'quantity' => 1.5],
+                // JSON has one number type; a whole quantity is sent as 1, not 1.0.
+                ['productId' => self::ONION, 'quantity' => 1],
+            ],
+        ], $body);
+    }
+
+    public function testCreateRejectsMalformedJsonWith400(): void
+    {
+        $this->client->request('POST', '/recipes', server: ['CONTENT_TYPE' => 'application/json'], content: '{"title":');
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame(['error' => 'Request body is not valid JSON.'], $this->json());
+    }
+
+    /**
+     * @param array<mixed> $payload
+     */
+    #[DataProvider('invalidPayloads')]
+    public function testCreateRejectsInvalidDataWith422(array $payload, string $error): void
+    {
+        $body = $this->request('POST', '/recipes', $payload);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => $error], $body);
+    }
+
+    /** @return iterable<string, array{array<mixed>, string}> */
+    public static function invalidPayloads(): iterable
+    {
+        $recipe = self::mashedPotatoes();
+        $potato = ['productId' => self::POTATO, 'quantity' => 1];
+
+        // Shape: InvalidRequestBody.
+        yield 'body is a list' => [['Mashed potatoes'], 'Request body must be a JSON object.'];
+        yield 'missing title' => [array_diff_key($recipe, ['title' => true]), '"title" must be a string.'];
+        yield 'title not a string' => [['title' => 42] + $recipe, '"title" must be a string.'];
+        yield 'missing description' => [array_diff_key($recipe, ['description' => true]), '"description" must be a string.'];
+        yield 'missing ingredients' => [array_diff_key($recipe, ['ingredients' => true]), '"ingredients" must be a list.'];
+        yield 'ingredients an object' => [['ingredients' => ['a' => $potato]] + $recipe, '"ingredients" must be a list.'];
+        yield 'ingredient not an object' => [['ingredients' => [self::POTATO]] + $recipe, '"ingredients[0]" must be an object with "productId" and "quantity".'];
+        yield 'ingredient without productId' => [['ingredients' => [['quantity' => 1]]] + $recipe, '"ingredients[0].productId" must be a string.'];
+        yield 'productId not a string' => [['ingredients' => [['productId' => 1, 'quantity' => 1]]] + $recipe, '"ingredients[0].productId" must be a string.'];
+        yield 'ingredient without quantity' => [['ingredients' => [$potato, ['productId' => self::ONION]]] + $recipe, '"ingredients[1].quantity" must be a number.'];
+        yield 'quantity as string' => [['ingredients' => [['productId' => self::POTATO, 'quantity' => '1']]] + $recipe, '"ingredients[0].quantity" must be a number.'];
+
+        // Business rules: Domain exceptions.
+        yield 'empty title' => [['title' => ' '] + $recipe, 'Recipe title must not be empty.'];
+        yield 'title too long' => [['title' => str_repeat('a', 151)] + $recipe, 'Recipe title must be at most 150 characters.'];
+        yield 'empty description' => [['description' => ''] + $recipe, 'Recipe description must not be empty.'];
+        yield 'no ingredients' => [['ingredients' => []] + $recipe, 'A recipe needs at least one ingredient.'];
+        yield 'duplicate product' => [['ingredients' => [$potato, $potato]] + $recipe, \sprintf('Product "%s" appears more than once in the recipe.', self::POTATO)];
+        yield 'zero quantity' => [['ingredients' => [['productId' => self::POTATO, 'quantity' => 0]]] + $recipe, 'Ingredient quantity must be positive.'];
+        yield 'negative quantity' => [['ingredients' => [['productId' => self::POTATO, 'quantity' => -0.5]]] + $recipe, 'Ingredient quantity must be positive.'];
+        yield 'four decimals' => [['ingredients' => [['productId' => self::POTATO, 'quantity' => 0.1234]]] + $recipe, 'Ingredient quantity must have at most 3 decimal places.'];
+        yield 'malformed product id' => [['ingredients' => [['productId' => 'potato', 'quantity' => 1]]] + $recipe, '"potato" is not a valid product id.'];
+        yield 'unknown product' => [['ingredients' => [['productId' => self::MISSING_PRODUCT, 'quantity' => 1]]] + $recipe, \sprintf('Product "%s" does not exist.', self::MISSING_PRODUCT)];
+    }
+
+    /**
+     * @return array{title: string, description: string, ingredients: list<array{productId: string, quantity: int|float}>}
+     */
+    private static function mashedPotatoes(): array
+    {
+        return [
+            'title' => 'Mashed potatoes',
+            'description' => 'Boil and mash.',
+            'ingredients' => [
+                ['productId' => self::POTATO, 'quantity' => 1.5],
+                ['productId' => self::ONION, 'quantity' => 1],
+            ],
+        ];
+    }
+
+    /**
+     * @param array<mixed>|null $payload
+     *
+     * @return array<mixed>
+     */
+    private function request(string $method, string $uri, ?array $payload = null): array
+    {
+        $this->client->request(
+            $method,
+            $uri,
+            server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'],
+            content: null === $payload ? null : json_encode($payload, \JSON_THROW_ON_ERROR | \JSON_PRESERVE_ZERO_FRACTION),
+        );
+
+        return $this->json();
+    }
+
+    /** @return array<mixed> */
+    private function json(): array
+    {
+        $content = (string) $this->client->getResponse()->getContent();
+
+        return '' === $content ? [] : json_decode($content, true, flags: \JSON_THROW_ON_ERROR);
+    }
+}
