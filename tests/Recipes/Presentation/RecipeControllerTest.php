@@ -186,6 +186,83 @@ final class RecipeControllerTest extends WebTestCase
         yield 'negative offset' => ['offset=-5'];
     }
 
+    public function testUpdateReplacesTheRecipe(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $body = $this->request('PUT', '/recipes/'.$created['id'], [
+            'title' => 'Onion soup',
+            'description' => 'Fry the onion, then simmer.',
+            'ingredients' => [
+                ['productId' => self::ONION, 'quantity' => 0.75],
+                ['productId' => self::POTATO, 'quantity' => 0.3],
+            ],
+        ]);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([
+            'id' => $created['id'],
+            'title' => 'Onion soup',
+            'description' => 'Fry the onion, then simmer.',
+            'ingredients' => [
+                ['productId' => self::ONION, 'quantity' => 0.75],
+                ['productId' => self::POTATO, 'quantity' => 0.3],
+            ],
+        ], $body);
+        self::assertSame($body, $this->request('GET', '/recipes/'.$created['id']));
+    }
+
+    public function testUpdateReturns404ForAnUnknownRecipe(): void
+    {
+        $this->request('PUT', '/recipes/'.self::UNKNOWN_ID, self::mashedPotatoes());
+
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    /**
+     * @param array<mixed> $payload
+     */
+    #[DataProvider('invalidPayloads')]
+    public function testUpdateRejectsInvalidDataWith422AndKeepsTheRecipe(array $payload, string $error): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $body = $this->request('PUT', '/recipes/'.$created['id'], $payload);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['error' => $error], $body);
+        self::assertSame($created, $this->request('GET', '/recipes/'.$created['id']));
+    }
+
+    public function testUpdateReturns400ForMalformedJson(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $this->client->request('PUT', '/recipes/'.$created['id'], server: ['CONTENT_TYPE' => 'application/json'], content: 'nope');
+
+        self::assertResponseStatusCodeSame(400);
+    }
+
+    public function testDeleteReturns204AndRemovesTheRecipe(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $this->client->request('DELETE', '/recipes/'.$created['id']);
+
+        self::assertResponseStatusCodeSame(204);
+        self::assertSame('', (string) $this->client->getResponse()->getContent());
+
+        $this->request('GET', '/recipes/'.$created['id']);
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testDeleteReturns404ForAnUnknownRecipe(): void
+    {
+        $this->client->request('DELETE', '/recipes/'.self::UNKNOWN_ID);
+
+        self::assertResponseStatusCodeSame(404);
+    }
+
     /**
      * @return array{title: string, description: string, ingredients: list<array{productId: string, quantity: int|float}>}
      */

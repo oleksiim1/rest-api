@@ -6,11 +6,15 @@ namespace App\Recipes\Presentation;
 
 use App\Recipes\Application\CreateRecipe\CreateRecipe;
 use App\Recipes\Application\CreateRecipe\CreateRecipeHandler;
+use App\Recipes\Application\DeleteRecipe\DeleteRecipe;
+use App\Recipes\Application\DeleteRecipe\DeleteRecipeHandler;
 use App\Recipes\Application\GetRecipe\GetRecipe;
 use App\Recipes\Application\GetRecipe\GetRecipeHandler;
 use App\Recipes\Application\ListRecipes\ListRecipes;
 use App\Recipes\Application\ListRecipes\ListRecipesHandler;
 use App\Recipes\Application\RecipeView;
+use App\Recipes\Application\UpdateRecipe\UpdateRecipe;
+use App\Recipes\Application\UpdateRecipe\UpdateRecipeHandler;
 use App\Shared\Presentation\Pagination;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -48,5 +52,23 @@ final class RecipeController extends AbstractController
     public function show(string $id, GetRecipeHandler $handler): JsonResponse
     {
         return $this->json($handler(new GetRecipe($id))->toArray());
+    }
+
+    #[Route('/{id}', name: 'update', methods: ['PUT'])]
+    public function update(string $id, Request $request, UpdateRecipeHandler $handler): JsonResponse
+    {
+        $payload = RecipePayload::fromRequest($request);
+
+        $view = $handler(new UpdateRecipe($id, $payload->title, $payload->description, $payload->ingredients));
+
+        return $this->json($view->toArray());
+    }
+
+    #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    public function delete(string $id, DeleteRecipeHandler $handler): Response
+    {
+        $handler(new DeleteRecipe($id));
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 }
