@@ -25,7 +25,7 @@ Draft a commit message for the current changes and return it for review. **Never
 - **Subject:** imperative mood ("Add", "Fix", "Configure"), capitalized, no trailing period, at most 72 characters. Match the style of recent commits.
 - **Blank line**, then a **body** when the change is more than trivial: short `-` bullets explaining what changed and why, wrapped at 72 characters. Skip the body for a one-line change.
 - Don't mention file names unless they help; describe behavior and intent.
-- Don't add attribution or `Co-Authored-By` lines.
+- End the message with a blank line and a `Co-Authored-By` trailer naming the Claude model you are running as, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Output
 
