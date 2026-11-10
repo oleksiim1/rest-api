@@ -120,6 +120,44 @@ final class DoctrineRecipeRepositoryTest extends KernelTestCase
         self::assertSame(1, $this->ingredientRows());
     }
 
+    public function testPageIsOrderedByTitleThenId(): void
+    {
+        $this->newRecipe('Varenyky', [[self::POTATO, 1]]);
+        $first = $this->newRecipe('Borscht', [[self::BEET, 1]]);
+        $second = $this->newRecipe('Borscht', [[self::ONION, 1]]);
+        $this->newRecipe('Holubtsi', [[self::ONION, 1]]);
+        $this->em->clear();
+
+        $page = $this->recipes->page(0, 10);
+
+        self::assertSame(['Borscht', 'Borscht', 'Holubtsi', 'Varenyky'], self::titles($page));
+        // UUID v7 ids grow over time, so the earlier recipe comes first among equal titles.
+        self::assertTrue($page[0]->id()->equals($first->id()));
+        self::assertTrue($page[1]->id()->equals($second->id()));
+        self::assertSame([[self::BEET, '1.000']], self::flatten($page[0]->ingredients()));
+    }
+
+    public function testPageAppliesOffsetAndLimit(): void
+    {
+        foreach (['Varenyky', 'Borscht', 'Holubtsi', 'Deruny'] as $title) {
+            $this->newRecipe($title, [[self::POTATO, 1], [self::ONION, 0.5]]);
+        }
+        $this->em->clear();
+
+        self::assertSame(['Deruny', 'Holubtsi'], self::titles($this->recipes->page(1, 2)));
+        self::assertSame([], $this->recipes->page(4, 2));
+    }
+
+    /**
+     * @param list<Recipe> $recipes
+     *
+     * @return list<string>
+     */
+    private static function titles(array $recipes): array
+    {
+        return array_map(static fn (Recipe $r): string => $r->title()->value(), $recipes);
+    }
+
     public function testOfIdReturnsNullForAnUnknownId(): void
     {
         self::assertNull($this->recipes->ofId($this->recipes->nextIdentity()));
