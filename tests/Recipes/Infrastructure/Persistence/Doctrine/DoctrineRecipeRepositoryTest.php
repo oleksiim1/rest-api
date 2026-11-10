@@ -65,9 +65,69 @@ final class DoctrineRecipeRepositoryTest extends KernelTestCase
         );
     }
 
+    /**
+     * Keeping a product across the update matters: its new row has the same (recipe_id,
+     * product_id) as the old one, so the old rows must be gone before the new ones are inserted.
+     */
+    public function testUpdatingReplacesTheIngredientRows(): void
+    {
+        $recipe = $this->newRecipe('Borscht', [[self::POTATO, 1], [self::ONION, 0.2]]);
+        $this->em->clear();
+
+        $loaded = $this->recipes->ofId($recipe->id());
+        self::assertNotNull($loaded);
+        $loaded->update(
+            new RecipeTitle('Beet soup'),
+            new RecipeDescription('Simmer.'),
+            self::ingredients([[self::BEET, 0.5], [self::POTATO, 2]]),
+        );
+        $this->recipes->save($loaded);
+        $this->em->clear();
+
+        $reloaded = $this->recipes->ofId($recipe->id());
+        self::assertSame('Beet soup', $reloaded?->title()->value());
+        self::assertSame([[self::BEET, '0.500'], [self::POTATO, '2.000']], self::flatten($reloaded->ingredients()));
+        self::assertSame(2, $this->ingredientRows());
+    }
+
+    public function testUpdatingTwiceWithoutClearingKeepsWorking(): void
+    {
+        $recipe = $this->newRecipe('Borscht', [[self::POTATO, 1]]);
+
+        $recipe->update(new RecipeTitle('Borscht'), new RecipeDescription('Simmer.'), self::ingredients([[self::POTATO, 2]]));
+        $this->recipes->save($recipe);
+        $recipe->update(new RecipeTitle('Borscht'), new RecipeDescription('Simmer.'), self::ingredients([[self::POTATO, 3], [self::BEET, 1]]));
+        $this->recipes->save($recipe);
+        $this->em->clear();
+
+        self::assertSame(
+            [[self::POTATO, '3.000'], [self::BEET, '1.000']],
+            self::flatten($this->recipes->ofId($recipe->id())?->ingredients() ?? []),
+        );
+        self::assertSame(2, $this->ingredientRows());
+    }
+
+    public function testRemoveDeletesTheRecipeAndItsIngredients(): void
+    {
+        $recipe = $this->newRecipe('Borscht', [[self::POTATO, 1], [self::BEET, 0.5]]);
+        $kept = $this->newRecipe('Deruny', [[self::POTATO, 1]]);
+
+        $this->recipes->remove($recipe);
+        $this->em->clear();
+
+        self::assertNull($this->recipes->ofId($recipe->id()));
+        self::assertNotNull($this->recipes->ofId($kept->id()));
+        self::assertSame(1, $this->ingredientRows());
+    }
+
     public function testOfIdReturnsNullForAnUnknownId(): void
     {
         self::assertNull($this->recipes->ofId($this->recipes->nextIdentity()));
+    }
+
+    private function ingredientRows(): int
+    {
+        return (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM recipe_ingredients');
     }
 
     /**
