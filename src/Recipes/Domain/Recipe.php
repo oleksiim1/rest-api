@@ -31,6 +31,21 @@ class Recipe
         $this->ingredients = $this->rows($ingredients);
     }
 
+    /**
+     * Replaces the whole recipe. The ingredient list is swapped as a whole (new rows, not edits
+     * of the old ones), which lets Doctrine delete the old rows before inserting the new ones.
+     *
+     * @param list<Ingredient> $ingredients
+     */
+    public function update(RecipeTitle $title, RecipeDescription $description, array $ingredients): void
+    {
+        $rows = $this->rows($ingredients);
+
+        $this->title = $title;
+        $this->description = $description;
+        $this->ingredients = $rows;
+    }
+
     public function id(): RecipeId
     {
         return $this->id;

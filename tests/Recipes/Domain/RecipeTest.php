@@ -12,6 +12,7 @@ use App\Recipes\Domain\Recipe;
 use App\Recipes\Domain\RecipeDescription;
 use App\Recipes\Domain\RecipeId;
 use App\Recipes\Domain\RecipeTitle;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class RecipeTest extends TestCase
@@ -49,6 +50,52 @@ final class RecipeTest extends TestCase
             self::ingredient(self::ONION, 0.2),
             self::ingredient(strtoupper(self::POTATO), 0.5),
         ]);
+    }
+
+    public function testUpdateReplacesTitleDescriptionAndIngredients(): void
+    {
+        $recipe = self::recipe([self::ingredient(self::POTATO, 1), self::ingredient(self::ONION, 0.2)]);
+
+        $recipe->update(
+            new RecipeTitle('Borscht'),
+            new RecipeDescription('Simmer for an hour.'),
+            [self::ingredient(self::BEET, 0.5), self::ingredient(self::POTATO, 2)],
+        );
+
+        self::assertSame(self::ID, $recipe->id()->toString());
+        self::assertSame('Borscht', $recipe->title()->value());
+        self::assertSame('Simmer for an hour.', $recipe->description()->value());
+        self::assertSame([[self::BEET, '0.500'], [self::POTATO, '2.000']], self::flatten($recipe->ingredients()));
+    }
+
+    /**
+     * @param list<Ingredient> $ingredients
+     */
+    #[DataProvider('invalidIngredientLists')]
+    public function testAFailedUpdateLeavesTheRecipeUnchanged(array $ingredients, string $message): void
+    {
+        $recipe = self::recipe([self::ingredient(self::POTATO, 1)]);
+
+        try {
+            $recipe->update(new RecipeTitle('Borscht'), new RecipeDescription('Simmer.'), $ingredients);
+            self::fail('Expected InvalidRecipeData.');
+        } catch (InvalidRecipeData $e) {
+            self::assertSame($message, $e->getMessage());
+        }
+
+        self::assertSame('Mashed potatoes', $recipe->title()->value());
+        self::assertSame('Boil and mash.', $recipe->description()->value());
+        self::assertSame([[self::POTATO, '1.000']], self::flatten($recipe->ingredients()));
+    }
+
+    /** @return iterable<string, array{list<Ingredient>, string}> */
+    public static function invalidIngredientLists(): iterable
+    {
+        yield 'no ingredients' => [[], 'A recipe needs at least one ingredient.'];
+        yield 'duplicate product' => [
+            [self::ingredient(self::BEET, 1), self::ingredient(self::BEET, 2)],
+            \sprintf('Product "%s" appears more than once in the recipe.', self::BEET),
+        ];
     }
 
     /**
