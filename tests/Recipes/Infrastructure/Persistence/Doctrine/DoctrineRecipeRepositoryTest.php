@@ -33,10 +33,13 @@ final class DoctrineRecipeRepositoryTest extends KernelTestCase
         $container = self::getContainer();
         self::truncateRecipes($container);
 
-        // Built directly: nothing injects the repository until the Presentation layer, so the
-        // container removes the private alias. The controller tests cover the binding.
-        $this->recipes = new DoctrineRecipeRepository($container->get('doctrine'));
+        $this->recipes = $container->get(RecipeRepository::class);
         $this->em = $container->get(EntityManagerInterface::class);
+    }
+
+    public function testTheInterfaceIsBoundToTheDoctrineImplementation(): void
+    {
+        self::assertInstanceOf(DoctrineRecipeRepository::class, $this->recipes);
     }
 
     public function testNextIdentityIsAUuidV7(): void
