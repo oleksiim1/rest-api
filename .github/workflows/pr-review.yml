@@ -42,20 +42,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      # Runs the session as the pr-reviewer agent (.claude/agents/pr-reviewer.md), so its
+      # instructions, tools and model apply directly. The review comes back as structured output.
+      - id: review
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            REPO: ${{ github.repository }}
-            PR NUMBER: ${{ env.PR_NUMBER }}
-
-            Delegate the review of this pull request to the pr-reviewer sub agent,
-            passing it the repository and PR number above. Do not review the diff yourself.
-
-            When the sub agent returns, write its review unchanged to a file, then post it
-            as a single comment on the pull request with
-            `gh pr comment ${{ env.PR_NUMBER }} --body-file <file>`,
-            starting the comment with the heading "## Claude code review".
+          prompt: Review pull request ${{ env.PR_NUMBER }} in ${{ github.repository }}.
           claude_args: |
+            --agent pr-reviewer
             --max-turns 15
-            --allowedTools "Agent,Task,Read,Write,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
+            --allowedTools "Read,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --json-schema '{"type":"object","properties":{"review":{"type":"string","description":"The full review in GitHub Markdown, ending with the verdict line."}},"required":["review"]}'
+
+      # The review goes through an environment variable, never straight into the script,
+      # so its contents cannot run as shell code.
+      - name: Post the review on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
+        run: |
+          {
+            printf '## Claude code review\n\n'
+            printf '%s\n' "$STRUCTURED_OUTPUT" | jq -r '.review'
+          } > pr-review.md
+          gh pr comment "$PR_NUMBER" --body-file pr-review.md
+
+      # Fails the job unless the last non-empty line of the review is `VERDICT: PASS`.
+      - name: Check the review verdict
+        run: |
+          verdict=$(grep -v '^[[:space:]]*$' pr-review.md | tail -n 1 | sed 's/[[:space:]]*$//')
+          case "$verdict" in
+            "VERDICT: PASS") echo "Verdict: PASS" ;;
+            "VERDICT: BLOCK") echo "::error::Claude's review verdict is BLOCK."; exit 1 ;;
+            *) echo "::error::The review does not end with a VERDICT line."; exit 1 ;;
+          esac
