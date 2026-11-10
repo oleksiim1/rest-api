@@ -138,6 +138,54 @@ final class RecipeControllerTest extends WebTestCase
         yield 'not a uuid' => ['42', '"42" is not a valid recipe id.'];
     }
 
+    public function testListReturnsRecipesOrderedByTitle(): void
+    {
+        $this->request('POST', '/recipes', ['title' => 'Varenyky'] + self::mashedPotatoes());
+        $created = $this->request('POST', '/recipes', ['title' => 'Borscht'] + self::mashedPotatoes());
+
+        $body = $this->request('GET', '/recipes');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['Borscht', 'Varenyky'], array_column($body, 'title'));
+        self::assertSame($created, $body[0]);
+    }
+
+    public function testListIsAnEmptyArrayWithoutRecipes(): void
+    {
+        self::assertSame([], $this->request('GET', '/recipes'));
+        self::assertResponseStatusCodeSame(200);
+    }
+
+    public function testListReturnsTheRequestedPage(): void
+    {
+        foreach (['Varenyky', 'Borscht', 'Holubtsi', 'Deruny'] as $title) {
+            $this->request('POST', '/recipes', ['title' => $title] + self::mashedPotatoes());
+        }
+
+        $body = $this->request('GET', '/recipes?limit=2&offset=1');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['Deruny', 'Holubtsi'], array_column($body, 'title'));
+    }
+
+    #[DataProvider('invalidPages')]
+    public function testListRejectsAnInvalidPageWith400(string $query): void
+    {
+        $body = $this->request('GET', '/recipes?'.$query);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertIsString($body['error']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function invalidPages(): iterable
+    {
+        yield 'limit zero' => ['limit=0'];
+        yield 'limit above max' => ['limit=101'];
+        yield 'limit not a number' => ['limit=all'];
+        yield 'negative offset' => ['offset=-5'];
+    }
+
     /**
      * @return array{title: string, description: string, ingredients: list<array{productId: string, quantity: int|float}>}
      */
