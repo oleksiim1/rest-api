@@ -10,6 +10,7 @@ use App\Catalog\Domain\ProductId;
 use App\Catalog\Domain\ProductName;
 use App\Catalog\Domain\ProductRepository;
 use App\Catalog\Domain\Unit;
+use App\Tests\ResetsRecipeSearchIndex;
 use App\Tests\TruncatesTables;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -17,6 +18,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class RecipeControllerTest extends WebTestCase
 {
+    use ResetsRecipeSearchIndex;
     use TruncatesTables;
 
     private const POTATO = '00000000-0000-7000-8000-000000000001';
@@ -31,6 +33,7 @@ final class RecipeControllerTest extends WebTestCase
         $this->client = self::createClient();
         $container = self::getContainer();
         self::truncateTables($container, 'recipe_ingredients', 'recipes', 'products');
+        self::resetRecipeSearchIndex($container);
 
         $products = $container->get(ProductRepository::class);
         \assert($products instanceof ProductRepository);
@@ -181,6 +184,98 @@ final class RecipeControllerTest extends WebTestCase
         yield 'limit above max' => ['limit=101'];
         yield 'limit not a number' => ['limit=all'];
         yield 'negative offset' => ['offset=-5'];
+    }
+
+    public function testSearchReturnsOnlyTheMatchingRecipes(): void
+    {
+        $borscht = $this->request('POST', '/recipes', ['title' => 'Ukrainian borscht', 'description' => 'Simmer beets with cabbage.'] + self::mashedPotatoes());
+        $this->request('POST', '/recipes', ['title' => 'Varenyky', 'description' => 'Dumplings with cherries.'] + self::mashedPotatoes());
+
+        $body = $this->request('GET', '/recipes?q=borscht');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([$borscht], $body);
+    }
+
+    public function testSearchFindsARecipeRightAfterItIsCreated(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        self::assertSame([$created], $this->request('GET', '/recipes?q=mashed'));
+    }
+
+    public function testSearchNoLongerFindsADeletedRecipe(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $this->client->request('DELETE', '/recipes/'.$created['id']);
+
+        self::assertSame([], $this->request('GET', '/recipes?q=mashed'));
+        self::assertResponseStatusCodeSame(200);
+    }
+
+    public function testSearchFindsTheNewTitleAfterAnUpdateAndNotTheOldOne(): void
+    {
+        $created = $this->request('POST', '/recipes', self::mashedPotatoes());
+
+        $updated = $this->request('PUT', '/recipes/'.$created['id'], ['title' => 'Onion soup', 'description' => 'Fry, then simmer.'] + self::mashedPotatoes());
+
+        self::assertSame([$updated], $this->request('GET', '/recipes?q=onion'));
+        self::assertSame([], $this->request('GET', '/recipes?q=mashed'));
+    }
+
+    #[DataProvider('invalidSearches')]
+    public function testSearchRejectsAnInvalidQueryWith400(string $query, string $error): void
+    {
+        $body = $this->request('GET', '/recipes?'.$query);
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertSame(['error' => $error], $body);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function invalidSearches(): iterable
+    {
+        yield 'empty' => ['q=', '"q" must not be empty.'];
+        yield 'whitespace only' => ['q=%20%20', '"q" must not be empty.'];
+        yield 'too long' => ['q='.str_repeat('a', 201), '"q" must be at most 200 characters.'];
+        yield 'not a string' => ['q[]=borscht', '"q" must be a string.'];
+    }
+
+    public function testSearchAcceptsAQueryOf200Characters(): void
+    {
+        self::assertSame([], $this->request('GET', '/recipes?q='.str_repeat('a', 200)));
+        self::assertResponseStatusCodeSame(200);
+    }
+
+    public function testSearchReturnsTheRequestedPage(): void
+    {
+        foreach (['Varenyky', 'Borscht', 'Holubtsi'] as $title) {
+            $this->request('POST', '/recipes', ['title' => $title, 'description' => 'Uses a potato.'] + self::mashedPotatoes());
+        }
+
+        $body = $this->request('GET', '/recipes?q=potato&limit=1&offset=1');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['Holubtsi'], array_column($body, 'title'));
+    }
+
+    public function testSearchRejectsAnInvalidPageWith400(): void
+    {
+        $this->request('GET', '/recipes?q=potato&limit=0');
+
+        self::assertResponseStatusCodeSame(400);
+    }
+
+    public function testListWithoutQueryStillReadsFromTheDatabase(): void
+    {
+        $this->request('POST', '/recipes', ['title' => 'Varenyky'] + self::mashedPotatoes());
+        $this->request('POST', '/recipes', ['title' => 'Borscht'] + self::mashedPotatoes());
+
+        // An empty index proves the list does not come from search.
+        self::resetRecipeSearchIndex(self::getContainer());
+
+        self::assertSame(['Borscht', 'Varenyky'], array_column($this->request('GET', '/recipes'), 'title'));
     }
 
     public function testUpdateReplacesTheRecipe(): void
