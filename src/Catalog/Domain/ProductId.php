@@ -8,7 +8,7 @@ use App\Catalog\Domain\Exception\InvalidProductId;
 
 final class ProductId
 {
-    private const PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
+    private const PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D';
 
     private function __construct(private readonly string $value)
     {
