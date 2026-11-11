@@ -22,10 +22,28 @@ services:
             # Entities, value objects and domain exceptions are not services.
             - '../src/*/Domain/'
             - '../src/Kernel.php'
+            # Dev/test-only commands (they need require-dev packages); registered under when@dev/when@test.
+            - '../src/Catalog/Presentation/Cli/'
+            - '../src/Recipes/Presentation/Cli/'
 
     App\Catalog\Domain\ProductRepository: '@App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository'
     App\Recipes\Domain\RecipeRepository: '@App\Recipes\Infrastructure\Persistence\Doctrine\DoctrineRecipeRepository'
     App\Recipes\Application\ProductExistence: '@App\Recipes\Infrastructure\Catalog\CatalogProductExistence'
+    App\Recipes\Application\AvailableProducts: '@App\Recipes\Infrastructure\Catalog\CatalogAvailableProducts'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@dev: &dev_only_services
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\Catalog\Presentation\Cli\:
+            resource: '../src/Catalog/Presentation/Cli/'
+
+        App\Recipes\Presentation\Cli\:
+            resource: '../src/Recipes/Presentation/Cli/'
+
+when@test: *dev_only_services
