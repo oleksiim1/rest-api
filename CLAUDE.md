@@ -54,6 +54,8 @@ Tests go under `tests/` (`App\Tests\`), mirroring the `src/` structure:
 - `Application` tests use in-memory fakes for repository interfaces.
 - `Infrastructure` and `Presentation` tests use `KernelTestCase` and `WebTestCase`, the latter covering HTTP status codes and response bodies.
 
+Don't write tests for seeds (Faker data-seeding commands and fixtures); they're exempt from TDD.
+
 ## Git
 - Branch names: `<type>/<ticket-id>-<kebab-description>` (types: feat, fix, chore, docs, refactor)
 - Branch from `master`, never commit directly to it

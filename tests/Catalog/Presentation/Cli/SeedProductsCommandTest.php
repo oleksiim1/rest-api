@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Catalog\Presentation\Cli;
 
 use App\Catalog\Domain\Product;
+use App\Catalog\Domain\ProductName;
 use App\Catalog\Domain\ProductRepository;
-use App\Catalog\Presentation\Cli\ProductSeedData;
 use App\Tests\TruncatesTables;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -28,7 +28,7 @@ final class SeedProductsCommandTest extends KernelTestCase
         $this->tester = new CommandTester((new Application($kernel))->find('app:catalog:seed-products'));
     }
 
-    public function testItCreatesTheRequestedNumberOfRealProductsWithFakePrices(): void
+    public function testItCreatesTheRequestedNumberOfProductsWithFakeNamesAndPrices(): void
     {
         $this->tester->execute(['--count' => '5']);
 
@@ -37,11 +37,16 @@ final class SeedProductsCommandTest extends KernelTestCase
         self::assertCount(5, $products);
         self::assertStringContainsString('Created 5, skipped 0', $this->tester->getDisplay());
 
+        $names = [];
         foreach ($products as $product) {
-            self::assertContains($product->name()->value(), ProductSeedData::NAMES);
+            $name = $product->name()->value();
+            $names[] = mb_strtolower($name);
+            self::assertLessThanOrEqual(ProductName::MAX_LENGTH, mb_strlen($name));
+            self::assertMatchesRegularExpression('/^[A-Z][a-z]* [A-Z][a-z]*$/', $name);
             self::assertGreaterThan(0, $product->price()->amount());
             self::assertSame('UAH', $product->price()->currency());
         }
+        self::assertCount(5, array_unique($names));
     }
 
     public function testItCreatesTenProductsByDefault(): void
@@ -53,15 +58,12 @@ final class SeedProductsCommandTest extends KernelTestCase
     }
 
     #[DataProvider('invalidCounts')]
-    public function testItRejectsACountOutsideTheAvailableNames(string $count): void
+    public function testItRejectsANonPositiveCount(string $count): void
     {
         $status = $this->tester->execute(['--count' => $count]);
 
         self::assertSame(Command::INVALID, $status);
-        self::assertStringContainsString(
-            \sprintf('--count must be an integer between 1 and %d', \count(ProductSeedData::NAMES)),
-            $this->tester->getDisplay(),
-        );
+        self::assertStringContainsString('--count must be a positive integer.', $this->tester->getDisplay());
         self::assertCount(0, $this->products());
     }
 
@@ -72,19 +74,16 @@ final class SeedProductsCommandTest extends KernelTestCase
     {
         yield 'zero' => ['0'];
         yield 'word' => ['three'];
-        yield 'more than there are names' => [(string) (\count(ProductSeedData::NAMES) + 1)];
     }
 
     public function testRunningItAgainSkipsExistingProducts(): void
     {
-        $all = (string) \count(ProductSeedData::NAMES);
-
-        $this->tester->execute(['--count' => $all]);
-        $this->tester->execute(['--count' => $all]);
+        $this->tester->execute(['--count' => '5', '--seed' => '7']);
+        $this->tester->execute(['--count' => '5', '--seed' => '7']);
 
         $this->tester->assertCommandIsSuccessful();
-        self::assertCount(\count(ProductSeedData::NAMES), $this->products());
-        self::assertStringContainsString(\sprintf('Created 0, skipped %s', $all), $this->tester->getDisplay());
+        self::assertCount(5, $this->products());
+        self::assertStringContainsString('Created 0, skipped 5', $this->tester->getDisplay());
     }
 
     public function testTheSameSeedProducesTheSameProducts(): void

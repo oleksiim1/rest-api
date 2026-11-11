@@ -22,7 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'app:catalog:seed-products',
-    description: 'Adds real market products (potato, rice, eggs...) with fake prices and units. Existing names are skipped.',
+    description: 'Adds products with fake names, prices, and units. Existing names are skipped.',
 )]
 final class SeedProductsCommand extends Command
 {
@@ -36,7 +36,7 @@ final class SeedProductsCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('count', null, InputOption::VALUE_REQUIRED, \sprintf('How many products to add (at most %d)', \count(ProductSeedData::NAMES)), '10')
+            ->addOption('count', null, InputOption::VALUE_REQUIRED, 'How many products to add', '10')
             ->addOption('seed', null, InputOption::VALUE_REQUIRED, 'Faker seed, for repeatable output');
     }
 
@@ -45,8 +45,8 @@ final class SeedProductsCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $count = PositiveIntOption::parse($input->getOption('count'));
-        if (null === $count || $count > \count(ProductSeedData::NAMES)) {
-            $io->error(\sprintf('--count must be an integer between 1 and %d.', \count(ProductSeedData::NAMES)));
+        if (null === $count) {
+            $io->error('--count must be a positive integer.');
 
             return Command::INVALID;
         }
@@ -66,7 +66,8 @@ final class SeedProductsCommand extends Command
         $created = 0;
         $skipped = 0;
 
-        foreach ($faker->randomElements(ProductSeedData::NAMES, $count) as $name) {
+        for ($i = 0; $i < $count; ++$i) {
+            $name = ucwords(implode(' ', $faker->unique()->words(2)));
             try {
                 ($this->createProduct)(new CreateProduct(
                     $name,
