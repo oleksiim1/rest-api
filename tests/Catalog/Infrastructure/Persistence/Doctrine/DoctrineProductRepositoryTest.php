@@ -11,14 +11,14 @@ use App\Catalog\Domain\ProductName;
 use App\Catalog\Domain\ProductRepository;
 use App\Catalog\Domain\Unit;
 use App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository;
-use App\Tests\Catalog\TruncatesProducts;
+use App\Tests\TruncatesTables;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DoctrineProductRepositoryTest extends KernelTestCase
 {
-    use TruncatesProducts;
+    use TruncatesTables;
 
     private ProductRepository $products;
     private EntityManagerInterface $em;
@@ -27,7 +27,7 @@ final class DoctrineProductRepositoryTest extends KernelTestCase
     {
         self::bootKernel();
         $container = self::getContainer();
-        self::truncateProducts($container);
+        self::truncateTables($container, 'products');
 
         $this->products = $container->get(ProductRepository::class);
         $this->em = $container->get(EntityManagerInterface::class);

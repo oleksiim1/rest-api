@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Catalog\Presentation;
 
-use App\Tests\Catalog\TruncatesProducts;
+use App\Tests\TruncatesTables;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class ProductControllerTest extends WebTestCase
 {
-    use TruncatesProducts;
+    use TruncatesTables;
 
     private const UNKNOWN_ID = '0193a2b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b';
 
@@ -20,7 +20,7 @@ final class ProductControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = self::createClient();
-        self::truncateProducts(self::getContainer());
+        self::truncateTables(self::getContainer(), 'products');
     }
 
     public function testCreateReturns201WithLocationAndBody(): void

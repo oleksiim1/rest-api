@@ -11,12 +11,12 @@ use App\Catalog\Domain\ProductRepository;
 use App\Catalog\Domain\Unit;
 use App\Recipes\Domain\ProductId;
 use App\Recipes\Infrastructure\Catalog\CatalogProductExistence;
-use App\Tests\Catalog\TruncatesProducts;
+use App\Tests\TruncatesTables;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class CatalogProductExistenceTest extends KernelTestCase
 {
-    use TruncatesProducts;
+    use TruncatesTables;
 
     private ProductRepository $products;
     private CatalogProductExistence $existence;
@@ -25,7 +25,7 @@ final class CatalogProductExistenceTest extends KernelTestCase
     {
         self::bootKernel();
         $container = self::getContainer();
-        self::truncateProducts($container);
+        self::truncateTables($container, 'products');
 
         $this->products = $container->get(ProductRepository::class);
         $this->existence = new CatalogProductExistence($this->products);

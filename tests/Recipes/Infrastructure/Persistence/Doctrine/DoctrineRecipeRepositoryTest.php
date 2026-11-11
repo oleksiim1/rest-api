@@ -12,13 +12,13 @@ use App\Recipes\Domain\RecipeDescription;
 use App\Recipes\Domain\RecipeRepository;
 use App\Recipes\Domain\RecipeTitle;
 use App\Recipes\Infrastructure\Persistence\Doctrine\DoctrineRecipeRepository;
-use App\Tests\Recipes\TruncatesRecipes;
+use App\Tests\TruncatesTables;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class DoctrineRecipeRepositoryTest extends KernelTestCase
 {
-    use TruncatesRecipes;
+    use TruncatesTables;
 
     private const POTATO = '00000000-0000-7000-8000-000000000001';
     private const ONION = '00000000-0000-7000-8000-000000000002';
@@ -31,7 +31,7 @@ final class DoctrineRecipeRepositoryTest extends KernelTestCase
     {
         self::bootKernel();
         $container = self::getContainer();
-        self::truncateRecipes($container);
+        self::truncateTables($container, 'recipe_ingredients', 'recipes');
 
         $this->recipes = $container->get(RecipeRepository::class);
         $this->em = $container->get(EntityManagerInterface::class);

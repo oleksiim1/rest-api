@@ -10,16 +10,14 @@ use App\Catalog\Domain\ProductId;
 use App\Catalog\Domain\ProductName;
 use App\Catalog\Domain\ProductRepository;
 use App\Catalog\Domain\Unit;
-use App\Tests\Catalog\TruncatesProducts;
-use App\Tests\Recipes\TruncatesRecipes;
+use App\Tests\TruncatesTables;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class RecipeControllerTest extends WebTestCase
 {
-    use TruncatesProducts;
-    use TruncatesRecipes;
+    use TruncatesTables;
 
     private const POTATO = '00000000-0000-7000-8000-000000000001';
     private const ONION = '00000000-0000-7000-8000-000000000002';
@@ -32,8 +30,7 @@ final class RecipeControllerTest extends WebTestCase
     {
         $this->client = self::createClient();
         $container = self::getContainer();
-        self::truncateRecipes($container);
-        self::truncateProducts($container);
+        self::truncateTables($container, 'recipe_ingredients', 'recipes', 'products');
 
         $products = $container->get(ProductRepository::class);
         \assert($products instanceof ProductRepository);

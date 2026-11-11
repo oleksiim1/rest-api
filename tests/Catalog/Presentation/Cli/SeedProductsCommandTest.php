@@ -6,7 +6,7 @@ namespace App\Tests\Catalog\Presentation\Cli;
 
 use App\Catalog\Domain\ProductRepository;
 use App\Catalog\Presentation\Cli\ProductSeedData;
-use App\Tests\Catalog\TruncatesProducts;
+use App\Tests\TruncatesTables;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -14,14 +14,14 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class SeedProductsCommandTest extends KernelTestCase
 {
-    use TruncatesProducts;
+    use TruncatesTables;
 
     private CommandTester $tester;
 
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
-        self::truncateProducts(self::getContainer());
+        self::truncateTables(self::getContainer(), 'products');
 
         $this->tester = new CommandTester((new Application($kernel))->find('app:catalog:seed-products'));
     }
