@@ -23,6 +23,7 @@ services:
             - '../src/*/Domain/'
             - '../src/Kernel.php'
             # Dev/test-only commands (they need require-dev packages); registered under when@dev/when@test.
+            - '../src/Catalog/Presentation/Cli/'
             - '../src/Recipes/Presentation/Cli/'
 
     App\Catalog\Domain\ProductRepository: '@App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository'
@@ -38,6 +39,9 @@ when@dev: &dev_only_services
         _defaults:
             autowire: true
             autoconfigure: true
+
+        App\Catalog\Presentation\Cli\:
+            resource: '../src/Catalog/Presentation/Cli/'
 
         App\Recipes\Presentation\Cli\:
             resource: '../src/Recipes/Presentation/Cli/'
