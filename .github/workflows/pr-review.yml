@@ -43,7 +43,8 @@ jobs:
           fetch-depth: 0
 
       # Runs the session as the pr-reviewer agent (.claude/agents/pr-reviewer.md), so its
-      # instructions, tools and model apply directly. The review comes back as structured output.
+      # instructions, tools and model apply directly. The review is the session's final answer,
+      # read from the execution log in the next step.
       - id: review
         uses: anthropics/claude-code-action@v1
         with:
@@ -53,18 +54,26 @@ jobs:
             --agent pr-reviewer
             --max-turns 15
             --allowedTools "Read,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr view:*)"
-            --json-schema '{"type":"object","properties":{"review":{"type":"string","description":"The full review in GitHub Markdown, ending with the verdict line."}},"required":["review"]}'
 
-      # The review goes through an environment variable, never straight into the script,
-      # so its contents cannot run as shell code.
+      # Takes the review from the last `result` entry of the execution log. The review is read
+      # from a file into a variable, never written into the script, so it cannot run as shell code.
       - name: Post the review on the pull request
         env:
           GH_TOKEN: ${{ github.token }}
-          STRUCTURED_OUTPUT: ${{ steps.review.outputs.structured_output }}
+          EXECUTION_FILE: ${{ steps.review.outputs.execution_file }}
         run: |
+          if [ ! -s "$EXECUTION_FILE" ]; then
+            echo "::error::The review step left no execution log."
+            exit 1
+          fi
+          review=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE")
+          if [ -z "${review//[[:space:]]/}" ]; then
+            echo "::error::Claude returned no review text."
+            exit 1
+          fi
           {
             printf '## Claude code review\n\n'
-            printf '%s\n' "$STRUCTURED_OUTPUT" | jq -r '.review'
+            printf '%s\n' "$review"
           } > pr-review.md
           gh pr comment "$PR_NUMBER" --body-file pr-review.md
 
