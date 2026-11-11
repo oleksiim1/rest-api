@@ -46,8 +46,8 @@ services:
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
-when@dev: &dev_only_services
-    services:
+when@dev:
+    services: &dev_only_services_list
         _defaults:
             autowire: true
             autoconfigure: true
@@ -58,4 +58,11 @@ when@dev: &dev_only_services
         App\Recipes\Presentation\Cli\:
             resource: '../src/Recipes/Presentation/Cli/Seed*Command.php'
 
-when@test: *dev_only_services
+when@test:
+    services:
+        <<: *dev_only_services_list
+
+        # Tests never reach a real Elasticsearch: the search index is an in-memory fake.
+        # The Elasticsearch adapter has its own integration tests (phpunit --group integration).
+        App\Tests\Recipes\Application\SharedInMemoryRecipeSearchIndex: ~
+        App\Recipes\Application\RecipeSearchIndex: '@App\Tests\Recipes\Application\SharedInMemoryRecipeSearchIndex'
