@@ -7,6 +7,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    env(ELASTICSEARCH_URL): 'http://localhost:9200'
+    env(ELASTICSEARCH_RECIPES_INDEX): 'recipes'
 
 services:
     # default configuration for services in *this* file
@@ -30,6 +32,16 @@ services:
     App\Recipes\Domain\RecipeRepository: '@App\Recipes\Infrastructure\Persistence\Doctrine\DoctrineRecipeRepository'
     App\Recipes\Application\ProductExistence: '@App\Recipes\Infrastructure\Catalog\CatalogProductExistence'
     App\Recipes\Application\AvailableProducts: '@App\Recipes\Infrastructure\Catalog\CatalogAvailableProducts'
+    App\Recipes\Application\RecipeSearchIndex: '@App\Recipes\Infrastructure\Search\Elasticsearch\ElasticsearchRecipeSearchIndex'
+
+    Elastic\Elasticsearch\Client:
+        factory: ['Elastic\Elasticsearch\ClientBuilder', 'fromConfig']
+        arguments:
+            - { hosts: ['%env(ELASTICSEARCH_URL)%'] }
+
+    App\Recipes\Infrastructure\Search\Elasticsearch\ElasticsearchRecipeSearchIndex:
+        arguments:
+            $indexName: '%env(ELASTICSEARCH_RECIPES_INDEX)%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
