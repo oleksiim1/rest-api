@@ -1,0 +1,22 @@
+$kind: http-request
+id: 6da39c9b43a4d58630fd3b47
+name: Search recipes
+method: GET
+url: '{{baseUrl}}/recipes?q=potato&limit=50&offset=0'
+headers:
+  - key: Accept
+    value: application/json
+description: Full-text search over recipe titles and descriptions, best matches first. Tolerates small misspellings. q is required here, trimmed, and 1 to 200 characters; limit is 1 to 100 (default 50), offset defaults to 0. Without q, GET /recipes lists recipes instead.
+order: 1500
+examples: './.resources/Search recipes.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("body is an array", function () {
+          pm.expect(pm.response.json()).to.be.an("array");
+      });
