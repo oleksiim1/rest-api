@@ -6,11 +6,14 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@postgres:5432/${POSTGRES_DB:-app}?serverVersion=17&charset=utf8
+      ELASTICSEARCH_URL: http://elasticsearch:9200
     volumes:
       - .:/var/www/html
       - ./var:/var/www/html/var
     depends_on:
       postgres:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
 
   nginx:
