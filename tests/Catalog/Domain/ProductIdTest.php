@@ -6,6 +6,7 @@ namespace App\Tests\Catalog\Domain;
 
 use App\Catalog\Domain\Exception\InvalidProductId;
 use App\Catalog\Domain\ProductId;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ProductIdTest extends TestCase
@@ -25,10 +26,18 @@ final class ProductIdTest extends TestCase
         self::assertFalse($a->equals(ProductId::fromString('0193a2b4-5c6d-7e8f-9a0b-1c2d3e4f5a6c')));
     }
 
-    public function testItRejectsANonUuid(): void
+    #[DataProvider('malformedValues')]
+    public function testItRejectsANonUuid(string $value): void
     {
         $this->expectException(InvalidProductId::class);
 
-        ProductId::fromString('42');
+        ProductId::fromString($value);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function malformedValues(): iterable
+    {
+        yield 'not a uuid' => ['42'];
+        yield 'trailing newline' => ["0193a2b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b\n"];
     }
 }

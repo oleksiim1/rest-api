@@ -1,0 +1,39 @@
+$kind: http-request
+id: 43b38cb1d1670ea1cdc85e55
+name: Update recipe
+method: PUT
+url: '{{baseUrl}}/recipes/{{recipeId}}'
+headers:
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Potato soup",
+      "description": "Simmer the potatoes for 30 minutes, then blend.",
+      "ingredients": [
+        { "productId": "{{ingredientProductId}}", "quantity": 0.75 }
+      ]
+    }
+description: Replaces the whole recipe, including its ingredient list. Run Create recipe first, or set the recipeId collection variable.
+order: 4000
+examples: './.resources/Update recipe.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("body is the updated recipe", function () {
+          const body = pm.response.json();
+          pm.expect(body.id).to.eql(pm.collectionVariables.get("recipeId"));
+          pm.expect(body.title).to.eql("Potato soup");
+          pm.expect(body.ingredients).to.eql([
+              { productId: pm.collectionVariables.get("ingredientProductId"), quantity: 0.75 },
+          ]);
+      });

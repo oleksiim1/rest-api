@@ -1,0 +1,31 @@
+$kind: http-example
+name: 422 Unprocessable Content
+request:
+  method: POST
+  url: '{{baseUrl}}/recipes'
+  headers:
+    - key: Accept
+      value: application/json
+    - key: Content-Type
+      value: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "title": "Mashed potatoes",
+        "description": "Boil the potatoes until soft, then mash with butter.",
+        "ingredients": [
+          { "productId": "33333333-3333-7333-8333-333333333333", "quantity": 1.5 }
+        ]
+      }
+response:
+  statusCode: 422
+  statusText: Unprocessable Content
+  headers:
+    - key: Content-Type
+      value: application/json
+  body:
+    type: json
+    content: |-
+      { "error": "Product \"33333333-3333-7333-8333-333333333333\" does not exist." }
+order: 2000

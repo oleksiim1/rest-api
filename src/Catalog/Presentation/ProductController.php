@@ -15,6 +15,7 @@ use App\Catalog\Application\ListProducts\ListProductsHandler;
 use App\Catalog\Application\ProductView;
 use App\Catalog\Application\UpdateProduct\UpdateProduct;
 use App\Catalog\Application\UpdateProduct\UpdateProductHandler;
+use App\Shared\Application\PageRequest;
 use App\Shared\Presentation\Pagination;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,11 +29,11 @@ final class ProductController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request, ListProductsHandler $handler): JsonResponse
     {
-        $page = Pagination::fromRequest($request, ListProducts::DEFAULT_LIMIT, ListProducts::MAX_LIMIT);
+        $page = Pagination::fromRequest($request, PageRequest::DEFAULT_LIMIT, PageRequest::MAX_LIMIT);
 
         return $this->json(array_map(
             static fn (ProductView $view): array => $view->toArray(),
-            $handler(new ListProducts($page->limit, $page->offset)),
+            $handler(new ListProducts(new PageRequest($page->limit, $page->offset))),
         ));
     }
 

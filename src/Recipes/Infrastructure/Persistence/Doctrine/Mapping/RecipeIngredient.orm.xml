@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <!--
+        product_id refers to a Catalog product without a foreign key: the contexts share only the
+        UUID, so deleting a product does not touch recipes.
+    -->
+    <entity name="App\Recipes\Domain\RecipeIngredient" table="recipe_ingredients">
+
+        <unique-constraints>
+            <unique-constraint name="uniq_recipe_ingredients_recipe_product" columns="recipe_id,product_id"/>
+        </unique-constraints>
+
+        <id name="id" type="integer" column="id">
+            <generator strategy="IDENTITY"/>
+        </id>
+
+        <many-to-one field="recipe" target-entity="App\Recipes\Domain\Recipe" inversed-by="ingredients">
+            <join-column name="recipe_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+
+        <embedded name="productId" class="App\Recipes\Domain\ProductId" column-prefix="product_"/>
+        <embedded name="quantity" class="App\Recipes\Domain\Quantity" use-column-prefix="false"/>
+
+        <field name="position" column="position" type="smallint"/>
+    </entity>
+</doctrine-mapping>

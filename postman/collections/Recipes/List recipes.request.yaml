@@ -1,0 +1,22 @@
+$kind: http-request
+id: a430b6e65b71557d1380866a
+name: List recipes
+method: GET
+url: '{{baseUrl}}/recipes?limit=50&offset=0'
+headers:
+  - key: Accept
+    value: application/json
+description: Returns a page of recipes ordered by title. limit is 1 to 100 (default 50), offset defaults to 0.
+order: 1000
+examples: './.resources/List recipes.resources/examples'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("body is an array", function () {
+          pm.expect(pm.response.json()).to.be.an("array");
+      });

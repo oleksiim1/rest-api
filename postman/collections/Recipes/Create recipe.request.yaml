@@ -1,0 +1,60 @@
+$kind: http-request
+id: a7d1ee826232a0f15fef1182
+name: Create recipe
+method: POST
+url: '{{baseUrl}}/recipes'
+headers:
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Mashed potatoes",
+      "description": "Boil the potatoes until soft, then mash with butter.",
+      "ingredients": [
+        { "productId": "{{ingredientProductId}}", "quantity": 1.5 }
+      ]
+    }
+description: |-
+  Creates a recipe. title is at most 150 characters, description at most 5000.
+  ingredients needs at least one entry; each productId must be an existing Catalog
+  product, listed once, and quantity is a positive number with up to 3 decimals in
+  that product's unit. The pre-request script picks the first product.
+  Stores the new id in the collection variable recipeId.
+order: 2000
+examples: './.resources/Create recipe.resources/examples'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Ingredients must refer to an existing Catalog product: use the first one.
+      pm.sendRequest({
+          url: pm.variables.replaceIn("{{baseUrl}}/products?limit=1"),
+          method: "GET",
+          header: { Accept: "application/json" },
+      }, function (err, res) {
+          const products = err ? [] : res.json();
+          if (products.length === 0) {
+              throw new Error("No products found. Run app:catalog:seed-products first.");
+          }
+          pm.collectionVariables.set("ingredientProductId", products[0].id);
+      });
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("status is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      const body = pm.response.json();
+
+      pm.test("body has an id", function () {
+          pm.expect(body.id).to.be.a("string").and.not.empty;
+      });
+
+      if (body && body.id) {
+          pm.collectionVariables.set("recipeId", body.id);
+      }

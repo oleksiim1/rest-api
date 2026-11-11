@@ -18,6 +18,6 @@ final class ListProductsHandler
      */
     public function __invoke(ListProducts $query): array
     {
-        return array_map(ProductView::fromProduct(...), $this->products->page($query->offset, $query->limit));
+        return array_map(ProductView::fromProduct(...), $this->products->page($query->page->offset, $query->page->limit));
     }
 }

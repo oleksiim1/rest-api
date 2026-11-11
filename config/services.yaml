@@ -24,6 +24,8 @@ services:
             - '../src/Kernel.php'
 
     App\Catalog\Domain\ProductRepository: '@App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository'
+    App\Recipes\Domain\RecipeRepository: '@App\Recipes\Infrastructure\Persistence\Doctrine\DoctrineRecipeRepository'
+    App\Recipes\Application\ProductExistence: '@App\Recipes\Infrastructure\Catalog\CatalogProductExistence'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
