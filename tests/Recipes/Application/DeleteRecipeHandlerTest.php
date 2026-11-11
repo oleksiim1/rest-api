@@ -19,22 +19,25 @@ final class DeleteRecipeHandlerTest extends TestCase
     private const POTATO = '00000000-0000-7000-8000-000000000001';
 
     private InMemoryRecipeRepository $recipes;
+    private InMemoryRecipeSearchIndex $index;
     private DeleteRecipeHandler $handler;
 
     protected function setUp(): void
     {
         $this->recipes = new InMemoryRecipeRepository();
-        $this->handler = new DeleteRecipeHandler($this->recipes);
+        $this->index = new InMemoryRecipeSearchIndex();
+        $this->handler = new DeleteRecipeHandler($this->recipes, $this->index);
     }
 
     public function testItRemovesTheRecipe(): void
     {
-        $create = new CreateRecipeHandler($this->recipes, new IngredientResolver(new InMemoryProductExistence(self::POTATO)));
+        $create = new CreateRecipeHandler($this->recipes, new IngredientResolver(new InMemoryProductExistence(self::POTATO)), $this->index);
         $view = $create(new CreateRecipe('Mashed potatoes', 'Boil and mash.', [new IngredientInput(self::POTATO, 1)]));
 
         ($this->handler)(new DeleteRecipe($view->id));
 
         self::assertNull($this->recipes->ofId(RecipeId::fromString($view->id)));
+        self::assertSame([], $this->index->all());
     }
 
     public function testItFailsForAnUnknownRecipe(): void

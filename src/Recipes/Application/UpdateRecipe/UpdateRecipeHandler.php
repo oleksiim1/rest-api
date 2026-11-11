@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Recipes\Application\UpdateRecipe;
 
 use App\Recipes\Application\IngredientResolver;
+use App\Recipes\Application\RecipeSearchIndex;
 use App\Recipes\Application\RecipeView;
 use App\Recipes\Domain\Exception\RecipeNotFound;
 use App\Recipes\Domain\RecipeDescription;
@@ -17,6 +18,7 @@ final class UpdateRecipeHandler
     public function __construct(
         private readonly RecipeRepository $recipes,
         private readonly IngredientResolver $ingredients,
+        private readonly RecipeSearchIndex $index,
     ) {
     }
 
@@ -32,6 +34,9 @@ final class UpdateRecipeHandler
         );
         $this->recipes->save($recipe);
 
-        return RecipeView::fromRecipe($recipe);
+        $view = RecipeView::fromRecipe($recipe);
+        $this->index->index($view);
+
+        return $view;
     }
 }

@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Recipes\Application\DeleteRecipe;
 
+use App\Recipes\Application\RecipeSearchIndex;
 use App\Recipes\Domain\Exception\RecipeNotFound;
 use App\Recipes\Domain\RecipeId;
 use App\Recipes\Domain\RecipeRepository;
 
 final class DeleteRecipeHandler
 {
-    public function __construct(private readonly RecipeRepository $recipes)
-    {
+    public function __construct(
+        private readonly RecipeRepository $recipes,
+        private readonly RecipeSearchIndex $index,
+    ) {
     }
 
     public function __invoke(DeleteRecipe $command): void
@@ -20,5 +23,6 @@ final class DeleteRecipeHandler
         $recipe = $this->recipes->ofId($id) ?? throw RecipeNotFound::withId($id);
 
         $this->recipes->remove($recipe);
+        $this->index->remove($id->toString());
     }
 }
