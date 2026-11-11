@@ -9,6 +9,7 @@ use App\Recipes\Application\CreateRecipe\CreateRecipe;
 use App\Recipes\Application\CreateRecipe\CreateRecipeHandler;
 use App\Recipes\Application\IngredientInput;
 use App\Recipes\Domain\ProductId;
+use App\Shared\Presentation\Cli\PositiveIntOption;
 use Faker\Factory;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -46,7 +47,7 @@ final class SeedRecipesCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $count = self::positiveInt($input->getOption('count'));
+        $count = PositiveIntOption::parse($input->getOption('count'));
         if (null === $count) {
             $io->error('--count must be a positive integer.');
 
@@ -54,7 +55,7 @@ final class SeedRecipesCommand extends Command
         }
 
         $seed = $input->getOption('seed');
-        if (null !== $seed && null === self::positiveInt($seed)) {
+        if (null !== $seed && null === PositiveIntOption::parse($seed)) {
             $io->error('--seed must be a positive integer.');
 
             return Command::INVALID;
@@ -94,16 +95,5 @@ final class SeedRecipesCommand extends Command
         $io->success(\sprintf('Created %d recipe(s).', $count));
 
         return Command::SUCCESS;
-    }
-
-    private static function positiveInt(mixed $value): ?int
-    {
-        if (!\is_string($value) || 1 !== preg_match('/^[1-9][0-9]*$/D', $value)) {
-            return null;
-        }
-
-        $int = filter_var($value, \FILTER_VALIDATE_INT);
-
-        return false === $int ? null : $int;
     }
 }
