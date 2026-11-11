@@ -18,6 +18,6 @@ final class ListRecipesHandler
      */
     public function __invoke(ListRecipes $query): array
     {
-        return array_map(RecipeView::fromRecipe(...), $this->recipes->page($query->offset, $query->limit));
+        return array_map(RecipeView::fromRecipe(...), $this->recipes->page($query->page->offset, $query->page->limit));
     }
 }

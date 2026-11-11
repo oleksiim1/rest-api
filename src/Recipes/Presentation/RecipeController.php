@@ -15,6 +15,7 @@ use App\Recipes\Application\ListRecipes\ListRecipesHandler;
 use App\Recipes\Application\RecipeView;
 use App\Recipes\Application\UpdateRecipe\UpdateRecipe;
 use App\Recipes\Application\UpdateRecipe\UpdateRecipeHandler;
+use App\Shared\Application\PageRequest;
 use App\Shared\Presentation\Pagination;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,11 +29,11 @@ final class RecipeController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request, ListRecipesHandler $handler): JsonResponse
     {
-        $page = Pagination::fromRequest($request, ListRecipes::DEFAULT_LIMIT, ListRecipes::MAX_LIMIT);
+        $page = Pagination::fromRequest($request, PageRequest::DEFAULT_LIMIT, PageRequest::MAX_LIMIT);
 
         return $this->json(array_map(
             static fn (RecipeView $view): array => $view->toArray(),
-            $handler(new ListRecipes($page->limit, $page->offset)),
+            $handler(new ListRecipes(new PageRequest($page->limit, $page->offset))),
         ));
     }
 

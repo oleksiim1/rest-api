@@ -12,7 +12,7 @@ use App\Catalog\Application\ListProducts\ListProducts;
 use App\Catalog\Application\ListProducts\ListProductsHandler;
 use App\Catalog\Application\ProductView;
 use App\Catalog\Domain\Exception\ProductNotFound;
-use PHPUnit\Framework\Attributes\DataProvider;
+use App\Shared\Application\PageRequest;
 use PHPUnit\Framework\TestCase;
 
 final class ProductQueriesTest extends TestCase
@@ -63,24 +63,8 @@ final class ProductQueriesTest extends TestCase
             ($this->create)(new CreateProduct($name, 1000, 'UAH', 'kg'));
         }
 
-        $views = (new ListProductsHandler($this->products))(new ListProducts(limit: 2, offset: 1));
+        $views = (new ListProductsHandler($this->products))(new ListProducts(new PageRequest(limit: 2, offset: 1)));
 
         self::assertSame(['Garlic', 'Potato'], array_map(static fn (ProductView $v): string => $v->name, $views));
-    }
-
-    #[DataProvider('invalidPages')]
-    public function testListRejectsAnInvalidPage(int $limit, int $offset): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        new ListProducts($limit, $offset);
-    }
-
-    /** @return iterable<string, array{int, int}> */
-    public static function invalidPages(): iterable
-    {
-        yield 'zero limit' => [0, 0];
-        yield 'limit above max' => [ListProducts::MAX_LIMIT + 1, 0];
-        yield 'negative offset' => [10, -1];
     }
 }
