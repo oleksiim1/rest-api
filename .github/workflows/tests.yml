@@ -1,7 +1,7 @@
 name: Tests
 
-# Runs the PHPUnit suite against Postgres on every pull request into master,
-# drafts included, and again on each new push to it.
+# Runs the PHPUnit suite against Postgres, then the Elasticsearch integration tests,
+# on every pull request into master, drafts included, and again on each new push to it.
 on:
   pull_request:
     branches: [master]
@@ -35,11 +35,27 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      elasticsearch:
+        # Same exact version as compose.yaml.
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.6
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: 'false'
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -fs http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+
     env:
       # .env is not committed, so the kernel's required variables come from here.
       # APP_SECRET comes from the committed .env.test.
       DATABASE_URL: postgresql://app:app@127.0.0.1:5432/app?serverVersion=17&charset=utf8
       DEFAULT_URI: http://localhost
+      ELASTICSEARCH_URL: http://127.0.0.1:9200
 
     steps:
       - uses: actions/checkout@v6
@@ -77,3 +93,7 @@ jobs:
 
       - name: Run PHPUnit
         run: vendor/bin/phpunit
+
+      # The Elasticsearch adapter's tests, left out of the default run.
+      - name: Run Elasticsearch integration tests
+        run: vendor/bin/phpunit --group integration
