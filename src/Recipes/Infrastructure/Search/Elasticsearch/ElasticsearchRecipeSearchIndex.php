@@ -21,6 +21,9 @@ final class ElasticsearchRecipeSearchIndex implements RecipeSearchIndex
 {
     private const BULK_BATCH = 500;
 
+    /** Elasticsearch's default index.max_result_window: from + size may not exceed it. */
+    private const MAX_RESULT_WINDOW = 10_000;
+
     private const MAPPING = [
         'dynamic' => 'strict',
         'properties' => [
@@ -66,12 +69,17 @@ final class ElasticsearchRecipeSearchIndex implements RecipeSearchIndex
 
     public function search(string $query, PageRequest $page): array
     {
+        // Results past the window cannot be fetched, so that page is empty.
+        if ($page->offset >= self::MAX_RESULT_WINDOW) {
+            return [];
+        }
+
         try {
             $response = $this->client->search([
                 'index' => $this->indexName,
                 'body' => [
                     'from' => $page->offset,
-                    'size' => $page->limit,
+                    'size' => min($page->limit, self::MAX_RESULT_WINDOW - $page->offset),
                     'query' => [
                         'multi_match' => [
                             'query' => $query,

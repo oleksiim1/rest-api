@@ -74,6 +74,14 @@ final class ElasticsearchRecipeSearchIndexTest extends KernelTestCase
         self::assertSame([], $this->search('potato', new PageRequest(limit: 2, offset: 4)));
     }
 
+    public function testAnOffsetPastTheResultWindowFindsNothingInsteadOfFailing(): void
+    {
+        $this->index->index(self::view(1, 'Ukrainian borscht', 'Simmer beets with cabbage.'));
+
+        self::assertSame([], $this->search('borscht', new PageRequest(limit: 100, offset: 9950)));
+        self::assertSame([], $this->search('borscht', new PageRequest(limit: 1, offset: \PHP_INT_MAX)));
+    }
+
     public function testIndexingAnExistingIdReplacesTheDocument(): void
     {
         $this->index->index(self::view(1, 'Ukrainian borscht', 'Simmer beets with cabbage.'));
