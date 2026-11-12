@@ -34,9 +34,9 @@ final class SharedInMemoryRecipeSearchIndex implements RecipeSearchIndex
         return self::shared()->search($query, $page);
     }
 
-    public function rebuild(iterable $recipes): void
+    public function rebuild(iterable $recipes): int
     {
-        self::shared()->rebuild($recipes);
+        return self::shared()->rebuild($recipes);
     }
 
     private static function shared(): InMemoryRecipeSearchIndex

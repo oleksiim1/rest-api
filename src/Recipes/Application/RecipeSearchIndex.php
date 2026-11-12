@@ -30,6 +30,8 @@ interface RecipeSearchIndex
      * Drops the index, recreates it empty and loads the given recipes into it.
      *
      * @param iterable<RecipeView> $recipes
+     *
+     * @return int how many recipes were indexed
      */
-    public function rebuild(iterable $recipes): void;
+    public function rebuild(iterable $recipes): int;
 }

@@ -169,7 +169,7 @@ final class ElasticsearchRecipeSearchIndexTest extends TestCase
         $this->respond(['errors' => false, 'items' => []]);
         $this->respond(['_shards' => []]);
 
-        $this->index()->rebuild((static function (): \Generator {
+        $count = $this->index()->rebuild((static function (): \Generator {
             for ($i = 1; $i <= 501; ++$i) {
                 yield new RecipeView(\sprintf('00000000-0000-7000-9000-%012d', $i), 'Recipe '.$i, 'Cook it.', []);
             }
@@ -192,6 +192,7 @@ final class ElasticsearchRecipeSearchIndexTest extends TestCase
         self::assertSame(['index' => ['_index' => self::INDEX, '_id' => '00000000-0000-7000-9000-000000000001']], $first[0]);
         self::assertSame(['id' => '00000000-0000-7000-9000-000000000001', 'title' => 'Recipe 1', 'description' => 'Cook it.', 'ingredients' => []], $first[1]);
         self::assertCount(2, self::ndjson($this->requests[3]['body']));
+        self::assertSame(501, $count);
     }
 
     public function testRebuildWithNoRecipesSendsNoBulkRequest(): void
@@ -200,8 +201,7 @@ final class ElasticsearchRecipeSearchIndexTest extends TestCase
         $this->respond(['acknowledged' => true]);
         $this->respond(['_shards' => []]);
 
-        $this->index()->rebuild([]);
-
+        self::assertSame(0, $this->index()->rebuild([]));
         self::assertNotContains('http://es.test:9200/_bulk', array_column($this->requests, 'url'));
         self::assertCount(3, $this->requests);
     }

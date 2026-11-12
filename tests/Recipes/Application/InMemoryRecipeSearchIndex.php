@@ -39,12 +39,16 @@ final class InMemoryRecipeSearchIndex implements RecipeSearchIndex
         return \array_slice($matches, $page->offset, $page->limit);
     }
 
-    public function rebuild(iterable $recipes): void
+    public function rebuild(iterable $recipes): int
     {
         $this->recipes = [];
+        $count = 0;
         foreach ($recipes as $recipe) {
             $this->index($recipe);
+            ++$count;
         }
+
+        return $count;
     }
 
     /**

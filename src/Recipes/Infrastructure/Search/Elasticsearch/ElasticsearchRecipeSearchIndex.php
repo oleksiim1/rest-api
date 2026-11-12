@@ -104,14 +104,16 @@ final class ElasticsearchRecipeSearchIndex implements RecipeSearchIndex
         );
     }
 
-    public function rebuild(iterable $recipes): void
+    public function rebuild(iterable $recipes): int
     {
         $this->client->indices()->delete(['index' => $this->indexName, 'ignore_unavailable' => true]);
         $this->exists = false;
         $this->ensureIndex();
 
+        $count = 0;
         $operations = [];
         foreach ($recipes as $recipe) {
+            ++$count;
             $operations[] = ['index' => ['_index' => $this->indexName, '_id' => $recipe->id]];
             $operations[] = $recipe->toArray();
 
@@ -125,6 +127,8 @@ final class ElasticsearchRecipeSearchIndex implements RecipeSearchIndex
         }
 
         $this->client->indices()->refresh(['index' => $this->indexName]);
+
+        return $count;
     }
 
     /**
