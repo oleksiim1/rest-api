@@ -7,6 +7,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    env(ELASTICSEARCH_URL): 'http://localhost:9200'
+    env(ELASTICSEARCH_RECIPES_INDEX): 'recipes'
 
 services:
     # default configuration for services in *this* file
@@ -22,28 +24,45 @@ services:
             # Entities, value objects and domain exceptions are not services.
             - '../src/*/Domain/'
             - '../src/Kernel.php'
-            # Dev/test-only commands (they need require-dev packages); registered under when@dev/when@test.
-            - '../src/Catalog/Presentation/Cli/'
-            - '../src/Recipes/Presentation/Cli/'
+            # Dev/test-only seed commands (they need require-dev packages); registered under when@dev/when@test.
+            - '../src/Catalog/Presentation/Cli/Seed*Command.php'
+            - '../src/Recipes/Presentation/Cli/Seed*Command.php'
 
     App\Catalog\Domain\ProductRepository: '@App\Catalog\Infrastructure\Persistence\Doctrine\DoctrineProductRepository'
     App\Recipes\Domain\RecipeRepository: '@App\Recipes\Infrastructure\Persistence\Doctrine\DoctrineRecipeRepository'
     App\Recipes\Application\ProductExistence: '@App\Recipes\Infrastructure\Catalog\CatalogProductExistence'
     App\Recipes\Application\AvailableProducts: '@App\Recipes\Infrastructure\Catalog\CatalogAvailableProducts'
+    App\Recipes\Application\RecipeSearchIndex: '@App\Recipes\Infrastructure\Search\Elasticsearch\ElasticsearchRecipeSearchIndex'
+
+    Elastic\Elasticsearch\Client:
+        factory: ['Elastic\Elasticsearch\ClientBuilder', 'fromConfig']
+        arguments:
+            - { hosts: ['%env(ELASTICSEARCH_URL)%'] }
+
+    App\Recipes\Infrastructure\Search\Elasticsearch\ElasticsearchRecipeSearchIndex:
+        arguments:
+            $indexName: '%env(ELASTICSEARCH_RECIPES_INDEX)%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
-when@dev: &dev_only_services
-    services:
+when@dev:
+    services: &dev_only_services_list
         _defaults:
             autowire: true
             autoconfigure: true
 
         App\Catalog\Presentation\Cli\:
-            resource: '../src/Catalog/Presentation/Cli/'
+            resource: '../src/Catalog/Presentation/Cli/Seed*Command.php'
 
         App\Recipes\Presentation\Cli\:
-            resource: '../src/Recipes/Presentation/Cli/'
+            resource: '../src/Recipes/Presentation/Cli/Seed*Command.php'
 
-when@test: *dev_only_services
+when@test:
+    services:
+        <<: *dev_only_services_list
+
+        # Tests never reach a real Elasticsearch: the search index is an in-memory fake.
+        # The Elasticsearch adapter has its own integration tests (phpunit --group integration).
+        App\Tests\Recipes\Application\SharedInMemoryRecipeSearchIndex: ~
+        App\Recipes\Application\RecipeSearchIndex: '@App\Tests\Recipes\Application\SharedInMemoryRecipeSearchIndex'

@@ -13,6 +13,8 @@ use Symfony\Component\Uid\Uuid;
 
 final class DoctrineRecipeRepository implements RecipeRepository
 {
+    private const BATCH = 500;
+
     public function __construct(private readonly ManagerRegistry $registry)
     {
     }
@@ -49,6 +51,27 @@ final class DoctrineRecipeRepository implements RecipeRepository
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getResult();
+    }
+
+    /**
+     * Detaches each batch (and, by cascade, its ingredient rows) once it has been read, so a full
+     * pass over a large table does not keep every recipe in the identity map.
+     */
+    public function all(): iterable
+    {
+        for ($offset = 0; ; $offset += self::BATCH) {
+            $batch = $this->page($offset, self::BATCH);
+            yield from $batch;
+
+            $em = $this->em();
+            foreach ($batch as $recipe) {
+                $em->detach($recipe);
+            }
+
+            if (\count($batch) < self::BATCH) {
+                return;
+            }
+        }
     }
 
     private function em(): EntityManagerInterface

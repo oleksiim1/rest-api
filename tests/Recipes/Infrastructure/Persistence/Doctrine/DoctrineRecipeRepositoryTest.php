@@ -161,6 +161,56 @@ final class DoctrineRecipeRepositoryTest extends KernelTestCase
         return array_map(static fn (Recipe $r): string => $r->title()->value(), $recipes);
     }
 
+    public function testAllReadsEveryRecipeInTitleOrderAcrossBatches(): void
+    {
+        // More than one batch of 500, inserted in one flush to keep the test fast.
+        $expected = [];
+        for ($i = 0; $i < 1001; ++$i) {
+            $recipe = new Recipe(
+                $this->recipes->nextIdentity(),
+                new RecipeTitle(\sprintf('Recipe %04d', 1000 - $i)),
+                new RecipeDescription('Cook it.'),
+                self::ingredients([[self::POTATO, 1]]),
+            );
+            $this->em->persist($recipe);
+            $expected[] = $recipe->title()->value();
+        }
+        $this->em->flush();
+        $this->em->clear();
+        sort($expected);
+
+        $titles = [];
+        foreach ($this->recipes->all() as $recipe) {
+            $titles[] = $recipe->title()->value();
+            self::assertCount(1, $recipe->ingredients());
+        }
+
+        self::assertSame($expected, $titles);
+    }
+
+    public function testAllReleasesEachBatchOnceItHasBeenRead(): void
+    {
+        for ($i = 0; $i < 501; ++$i) {
+            $this->em->persist(new Recipe(
+                $this->recipes->nextIdentity(),
+                new RecipeTitle(\sprintf('Recipe %04d', $i)),
+                new RecipeDescription('Cook it.'),
+                self::ingredients([[self::POTATO, 1], [self::ONION, 2]]),
+            ));
+        }
+        $this->em->flush();
+        $this->em->clear();
+
+        $managed = [];
+        foreach ($this->recipes->all() as $recipe) {
+            $managed[] = $this->em->getUnitOfWork()->size();
+        }
+
+        // The batch being read (500 recipes, 1,000 ingredient rows) is managed; nothing piles up after it.
+        self::assertLessThanOrEqual(1500, max($managed));
+        self::assertSame(0, $this->em->getUnitOfWork()->size());
+    }
+
     public function testOfIdReturnsNullForAnUnknownId(): void
     {
         self::assertNull($this->recipes->ofId($this->recipes->nextIdentity()));

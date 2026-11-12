@@ -23,16 +23,18 @@ final class UpdateRecipeHandlerTest extends TestCase
     private const MISSING = '00000000-0000-7000-8000-000000000099';
 
     private InMemoryRecipeRepository $recipes;
+    private InMemoryRecipeSearchIndex $index;
     private UpdateRecipeHandler $handler;
     private RecipeView $existing;
 
     protected function setUp(): void
     {
         $this->recipes = new InMemoryRecipeRepository();
+        $this->index = new InMemoryRecipeSearchIndex();
         $resolver = new IngredientResolver(new InMemoryProductExistence(self::POTATO, self::BEET));
-        $this->handler = new UpdateRecipeHandler($this->recipes, $resolver);
+        $this->handler = new UpdateRecipeHandler($this->recipes, $resolver, $this->index);
 
-        $this->existing = (new CreateRecipeHandler($this->recipes, $resolver))(
+        $this->existing = (new CreateRecipeHandler($this->recipes, $resolver, $this->index))(
             new CreateRecipe('Mashed potatoes', 'Boil and mash.', [new IngredientInput(self::POTATO, 1)]),
         );
     }
@@ -60,6 +62,15 @@ final class UpdateRecipeHandlerTest extends TestCase
         self::assertSame($expected, RecipeView::fromRecipe($stored)->toArray());
     }
 
+    public function testItReplacesTheIndexedRecipe(): void
+    {
+        $view = ($this->handler)(new UpdateRecipe($this->existing->id, 'Borscht', 'Simmer.', [
+            new IngredientInput(self::BEET, 0.5),
+        ]));
+
+        self::assertEquals([$this->existing->id => $view], $this->index->all());
+    }
+
     public function testItFailsForAnUnknownRecipe(): void
     {
         $this->expectException(RecipeNotFound::class);
@@ -82,5 +93,6 @@ final class UpdateRecipeHandlerTest extends TestCase
         $stored = $this->recipes->ofId(RecipeId::fromString($this->existing->id));
         self::assertNotNull($stored);
         self::assertEquals($this->existing, RecipeView::fromRecipe($stored));
+        self::assertEquals([$this->existing->id => $this->existing], $this->index->all());
     }
 }

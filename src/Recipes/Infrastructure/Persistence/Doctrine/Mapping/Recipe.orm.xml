@@ -16,12 +16,14 @@
         <!--
             Recipe::update() swaps the whole list, so Doctrine deletes the old rows before inserting
             the new ones (orphan-removal). EAGER loads the ingredients of a page of recipes in one
-            batched query instead of one query per recipe.
+            batched query instead of one query per recipe. Detaching a recipe detaches its rows too,
+            which DoctrineRecipeRepository::all() relies on to release each batch.
         -->
         <one-to-many field="ingredients" target-entity="App\Recipes\Domain\RecipeIngredient"
                      mapped-by="recipe" orphan-removal="true" fetch="EAGER">
             <cascade>
                 <cascade-persist/>
+                <cascade-detach/>
             </cascade>
             <order-by>
                 <order-by-field name="position" direction="ASC"/>

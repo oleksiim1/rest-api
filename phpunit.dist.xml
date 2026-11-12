@@ -25,6 +25,13 @@
         </testsuite>
     </testsuites>
 
+    <!-- Tests that need a real Elasticsearch. Run them with the "group integration" CLI option. -->
+    <groups>
+        <exclude>
+            <group>integration</group>
+        </exclude>
+    </groups>
+
     <source ignoreSuppressionOfDeprecations="true"
             ignoreIndirectDeprecations="true"
             restrictNotices="true"

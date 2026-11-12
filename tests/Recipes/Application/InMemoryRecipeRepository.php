@@ -42,4 +42,9 @@ final class InMemoryRecipeRepository implements RecipeRepository
 
         return \array_slice($recipes, $offset, $limit);
     }
+
+    public function all(): iterable
+    {
+        return $this->page(0, \count($this->recipes));
+    }
 }

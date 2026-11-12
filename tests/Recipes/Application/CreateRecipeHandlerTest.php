@@ -18,14 +18,17 @@ final class CreateRecipeHandlerTest extends TestCase
     private const ONION = '00000000-0000-7000-8000-000000000002';
 
     private InMemoryRecipeRepository $recipes;
+    private InMemoryRecipeSearchIndex $index;
     private CreateRecipeHandler $handler;
 
     protected function setUp(): void
     {
         $this->recipes = new InMemoryRecipeRepository();
+        $this->index = new InMemoryRecipeSearchIndex();
         $this->handler = new CreateRecipeHandler(
             $this->recipes,
             new IngredientResolver(new InMemoryProductExistence(self::POTATO, self::ONION)),
+            $this->index,
         );
     }
 
@@ -48,6 +51,15 @@ final class CreateRecipeHandlerTest extends TestCase
         self::assertNotNull($this->recipes->ofId(RecipeId::fromString($view->id)));
     }
 
+    public function testItIndexesTheNewRecipe(): void
+    {
+        $view = ($this->handler)(new CreateRecipe('Mashed potatoes', 'Boil and mash.', [
+            new IngredientInput(self::POTATO, 1),
+        ]));
+
+        self::assertEquals([$view->id => $view], $this->index->all());
+    }
+
     public function testItRejectsAnIngredientWhoseProductDoesNotExist(): void
     {
         $missing = '00000000-0000-7000-8000-000000000099';
@@ -63,5 +75,6 @@ final class CreateRecipeHandlerTest extends TestCase
         }
 
         self::assertSame([], $this->recipes->page(0, 10));
+        self::assertSame([], $this->index->all());
     }
 }

@@ -13,6 +13,8 @@ use App\Recipes\Application\GetRecipe\GetRecipeHandler;
 use App\Recipes\Application\ListRecipes\ListRecipes;
 use App\Recipes\Application\ListRecipes\ListRecipesHandler;
 use App\Recipes\Application\RecipeView;
+use App\Recipes\Application\SearchRecipes\SearchRecipes;
+use App\Recipes\Application\SearchRecipes\SearchRecipesHandler;
 use App\Recipes\Application\UpdateRecipe\UpdateRecipe;
 use App\Recipes\Application\UpdateRecipe\UpdateRecipeHandler;
 use App\Shared\Application\PageRequest;
@@ -27,14 +29,17 @@ use Symfony\Component\Routing\Attribute\Route;
 final class RecipeController extends AbstractController
 {
     #[Route('', name: 'list', methods: ['GET'])]
-    public function list(Request $request, ListRecipesHandler $handler): JsonResponse
+    public function list(Request $request, ListRecipesHandler $list, SearchRecipesHandler $search): JsonResponse
     {
-        $page = Pagination::fromRequest($request, PageRequest::DEFAULT_LIMIT, PageRequest::MAX_LIMIT);
+        $query = SearchQuery::fromRequest($request);
+        $pagination = Pagination::fromRequest($request, PageRequest::DEFAULT_LIMIT, PageRequest::MAX_LIMIT);
+        $page = new PageRequest($pagination->limit, $pagination->offset);
 
-        return $this->json(array_map(
-            static fn (RecipeView $view): array => $view->toArray(),
-            $handler(new ListRecipes(new PageRequest($page->limit, $page->offset))),
-        ));
+        $views = null === $query
+            ? $list(new ListRecipes($page))
+            : $search(new SearchRecipes($query, $page));
+
+        return $this->json(array_map(static fn (RecipeView $view): array => $view->toArray(), $views));
     }
 
     #[Route('', name: 'create', methods: ['POST'])]

@@ -16,6 +16,7 @@ php bin/console debug:router          # list routes
 php bin/console lint:container        # validate service wiring
 php bin/console lint:yaml config      # validate YAML config
 php bin/console cache:clear
+php bin/console app:recipes:reindex  # rebuild the recipe search index from the database
 ```
 
 Tests:
@@ -24,6 +25,7 @@ Tests:
 vendor/bin/phpunit                                  # all tests
 vendor/bin/phpunit tests/Path/To/SomeTest.php       # one file
 vendor/bin/phpunit --filter testMethodName          # one test
+vendor/bin/phpunit --group integration              # tests that need a real Elasticsearch (excluded by default)
 ```
 
 ## Architecture (DDD)
@@ -55,6 +57,13 @@ Tests go under `tests/` (`App\Tests\`), mirroring the `src/` structure:
 - `Infrastructure` and `Presentation` tests use `KernelTestCase` and `WebTestCase`, the latter covering HTTP status codes and response bodies.
 
 Don't write tests for seeds (Faker data-seeding commands and fixtures); they're exempt from TDD.
+
+### Elasticsearch testing rules
+
+- By default, run only the unit test suite. Do not run integration tests or any test that needs a real Elasticsearch instance.
+- Never connect to a real Elasticsearch server in unit tests. Access Elasticsearch only through a repository or search service interface defined in `Domain` or `Application`, implemented in `Infrastructure`, and use an in-memory fake or mock of that interface in tests.
+- When adding or changing search logic, write unit tests that assert on the queries built and the results mapped, using a mocked Elasticsearch client or fake search service.
+- Integration tests that need a real Elasticsearch instance may be written, but must be tagged with `#[Group('integration')]` and must not be executed unless the issue explicitly asks for it.
 
 ## Git
 - Branch names: `<type>/<ticket-id>-<kebab-description>` (types: feat, fix, chore, docs, refactor)

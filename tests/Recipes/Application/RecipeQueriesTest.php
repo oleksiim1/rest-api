@@ -32,6 +32,7 @@ final class RecipeQueriesTest extends TestCase
         $this->create = new CreateRecipeHandler(
             $this->recipes,
             new IngredientResolver(new InMemoryProductExistence(self::POTATO)),
+            new InMemoryRecipeSearchIndex(),
         );
     }
 
