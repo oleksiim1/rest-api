@@ -158,9 +158,27 @@ final class ElasticsearchRecipeSearchIndex implements RecipeSearchIndex
     private function bulk(array $operations): void
     {
         $response = self::asArray($this->client->bulk(['body' => $operations]));
-        if ($response['errors'] ?? false) {
-            throw new \RuntimeException(\sprintf('Bulk indexing into "%s" failed for some recipes.', $this->indexName));
+        if (!($response['errors'] ?? false)) {
+            return;
         }
+
+        $failures = array_values(array_filter(
+            array_column($response['items'] ?? [], 'index'),
+            static fn (array $item): bool => isset($item['error']),
+        ));
+        $first = $failures[0] ?? null;
+
+        throw new \RuntimeException(\sprintf(
+            'Bulk indexing into "%s" failed for %d recipe(s).%s',
+            $this->indexName,
+            \count($failures),
+            null === $first ? '' : \sprintf(
+                ' First failure, recipe "%s": %s: %s',
+                $first['_id'] ?? '?',
+                $first['error']['type'] ?? 'unknown',
+                $first['error']['reason'] ?? 'no reason given',
+            ),
+        ));
     }
 
     /**

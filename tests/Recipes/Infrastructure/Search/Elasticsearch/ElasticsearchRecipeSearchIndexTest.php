@@ -210,10 +210,20 @@ final class ElasticsearchRecipeSearchIndexTest extends TestCase
     {
         $this->respond(['acknowledged' => true]);
         $this->respond(['acknowledged' => true]);
-        $this->respond(['errors' => true, 'items' => []]);
+        $this->respond(['errors' => true, 'items' => [
+            ['index' => ['_id' => '00000000-0000-7000-9000-000000000001', 'status' => 201]],
+            ['index' => ['_id' => self::ID, 'status' => 400, 'error' => [
+                'type' => 'strict_dynamic_mapping_exception',
+                'reason' => 'mapping set to strict, dynamic introduction of [notes] within [_doc] is not allowed',
+            ]]],
+            ['index' => ['_id' => '00000000-0000-7000-9000-000000000003', 'status' => 400, 'error' => ['type' => 'other', 'reason' => 'other']]],
+        ]]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Bulk indexing into "recipes_unit" failed for some recipes.');
+        $this->expectExceptionMessage(\sprintf(
+            'Bulk indexing into "recipes_unit" failed for 2 recipe(s). First failure, recipe "%s": strict_dynamic_mapping_exception: mapping set to strict, dynamic introduction of [notes] within [_doc] is not allowed',
+            self::ID,
+        ));
 
         $this->index()->rebuild([self::view('Ukrainian borscht')]);
     }
