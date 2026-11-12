@@ -22,9 +22,15 @@ final class ElasticsearchRecipeSearchIndexIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
+        // Every test starts by dropping the index, so never run against one that holds real data.
+        $indexName = self::env('ELASTICSEARCH_RECIPES_INDEX', 'recipes_test');
+        if (!str_ends_with($indexName, '_test')) {
+            self::fail(\sprintf('ELASTICSEARCH_RECIPES_INDEX is "%s"; integration tests only run against an index whose name ends in "_test".', $indexName));
+        }
+
         $this->index = new ElasticsearchRecipeSearchIndex(
             ClientBuilder::fromConfig(['hosts' => [self::env('ELASTICSEARCH_URL', 'http://localhost:9200')]]),
-            self::env('ELASTICSEARCH_RECIPES_INDEX', 'recipes_test'),
+            $indexName,
         );
         $this->index->rebuild([]);
     }
